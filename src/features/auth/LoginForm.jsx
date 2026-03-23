@@ -21,11 +21,11 @@ export function LoginForm() {
     }
   }
 
-  async function handleRequestAccessSetup() {
+  async function handleForgotPassword() {
     if (!form.email) {
       setStatus((current) => ({
         ...current,
-        error: "Ingresa tu email para recibir el enlace de activacion o recuperacion.",
+        error: "Ingresa tu email para enviarte el enlace de recuperacion.",
         success: "",
       }));
       return;
@@ -38,7 +38,7 @@ export function LoginForm() {
       setStatus((current) => ({
         ...current,
         recoveryLoading: false,
-        success: "Te enviamos un enlace para crear o recuperar tu contrasena.",
+        success: "Te enviamos un enlace para restablecer tu contrasena.",
       }));
     } catch (error) {
       setStatus((current) => ({
@@ -67,7 +67,7 @@ export function LoginForm() {
       </label>
 
       <p className="auth-helper-text">
-        Si tu acceso ya fue aprobado, entra con la contrasena que elegiste al solicitar acceso. Si la olvidaste, usa "Crear o recuperar contrasena".
+        Si ya tenes acceso aprobado, ingresá normalmente. Si olvidaste tu contrasena, usá el enlace de recuperacion.
       </p>
 
       {status.success ? <p className="success-banner">{status.success}</p> : null}
@@ -81,9 +81,9 @@ export function LoginForm() {
         className="secondary-button"
         type="button"
         disabled={status.recoveryLoading}
-        onClick={handleRequestAccessSetup}
+        onClick={handleForgotPassword}
       >
-        {status.recoveryLoading ? "Enviando enlace..." : "Crear o recuperar contrasena"}
+        {status.recoveryLoading ? "Enviando enlace..." : "Olvide mi contrasena"}
       </button>
     </form>
   );

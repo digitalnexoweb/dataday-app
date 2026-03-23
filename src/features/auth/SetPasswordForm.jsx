@@ -60,7 +60,7 @@ export function SetPasswordForm() {
       {status.error ? <p className="error-banner">{status.error}</p> : null}
 
       <button className="primary-button" type="submit" disabled={status.loading}>
-        {status.loading ? "Guardando..." : "Crear contrasena"}
+        {status.loading ? "Guardando..." : "Guardar nueva contrasena"}
       </button>
     </form>
   );

@@ -15,11 +15,11 @@ export function AuthPage({ authError }) {
           <div className="auth-hero-copy">
             <p className="eyebrow">DataDay Cuotas</p>
             <h1>
-              {isPasswordRecovery ? "Crea tu contrasena" : mode === "login" ? "Ingresa a tu club" : "Solicita acceso"}
+              {isPasswordRecovery ? "Restablece tu contrasena" : mode === "login" ? "Ingresa a tu club" : "Solicita acceso"}
             </h1>
             <p className="auth-subtitle">
               {isPasswordRecovery
-                ? "Activa tu acceso definiendo una contrasena propia para entrar a la plataforma."
+                ? "Defini una nueva contrasena para volver a entrar a la plataforma."
                 : "Plataforma con acceso controlado por DigitalNexo para clubes, academias e institutos."}
             </p>
           </div>
