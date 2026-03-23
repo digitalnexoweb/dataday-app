@@ -57,6 +57,9 @@ export default function App() {
     error: "",
     authEvent: "",
   });
+  const isPasswordRecovery =
+    supabaseEnabled &&
+    (authApi.isPasswordRecoveryFlow() || authState.authEvent === "PASSWORD_RECOVERY");
 
   useEffect(() => {
     let ignore = false;
@@ -316,11 +319,11 @@ export default function App() {
     );
   }
 
-  if (supabaseEnabled && !authState.session) {
+  if (isPasswordRecovery) {
     return <AuthPage authError={authState.error} />;
   }
 
-  if (supabaseEnabled && authApi.isPasswordRecoveryFlow()) {
+  if (supabaseEnabled && !authState.session) {
     return <AuthPage authError={authState.error} />;
   }
 
