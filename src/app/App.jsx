@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "../components/Header";
+import { MobileNav } from "../components/MobileNav";
 import { Sidebar } from "../components/Sidebar";
 import { AdminRequestsPage } from "../features/admin/AdminRequestsPage";
 import { AuthPage } from "../features/auth/AuthPage";
@@ -393,6 +394,7 @@ export default function App() {
             {view.section === "settings" && <SettingsPage {...screenProps} />}
           </section>
         </main>
+        <MobileNav currentSection={view.section} onNavigate={setView} isSuperAdmin={isSuperAdmin} />
       </div>
     </div>
   );

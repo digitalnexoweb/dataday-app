@@ -231,6 +231,26 @@ img {
   backdrop-filter: blur(14px);
 }
 
+
+.mobile-nav {
+  display: none;
+}
+
+.mobile-nav-item {
+  border: 0;
+}
+
+.mobile-nav-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.mobile-nav-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
 .auth-shell {
   min-height: 100vh;
   display: grid;
@@ -2693,8 +2713,68 @@ body.dark .stat-card.is-featured {
     display: none;
   }
 
+  .mobile-nav {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    border-radius: 24px;
+    background: rgba(12, 20, 38, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 18px 36px rgba(4, 10, 24, 0.28);
+    backdrop-filter: blur(18px);
+    z-index: 30;
+  }
+
+  .mobile-nav-item {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 10px 6px;
+    border-radius: 18px;
+    background: transparent;
+    color: rgba(232, 239, 255, 0.72);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .mobile-nav-item.is-active {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.24), rgba(249, 115, 22, 0.12));
+    color: #fff7ed;
+  }
+
   .app-shell {
     grid-template-columns: 1fr;
+    min-height: 100vh;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .app-content {
+    border-radius: 28px;
+    padding: 18px;
+    padding-bottom: 104px;
+  }
+
+  .page-stage {
+    min-height: auto;
+  }
+
+  .section-card,
+  .member-card,
+  .crm-members-list-panel,
+  .crm-detail-panel,
+  .crm-empty-panel {
+    border-radius: 26px;
   }
 
   .crm-members-shell {
@@ -2718,6 +2798,10 @@ body.dark .stat-card.is-featured {
     grid-template-columns: 1fr;
   }
 
+  .stat-card.is-featured {
+    grid-column: span 1;
+  }
+
   .member-card {
     grid-template-columns: 56px minmax(0, 1fr);
   }
@@ -2734,11 +2818,29 @@ body.dark .stat-card.is-featured {
 
 @media (max-width: 780px) {
   .app-stage {
-    padding: 10px;
+    padding: 0;
+  }
+
+  .auth-shell {
+    padding: 14px;
+  }
+
+  .auth-card {
+    padding: 22px 18px;
+    border-radius: 24px;
+  }
+
+  .auth-hero-logo {
+    width: 72px;
+    height: 72px;
+    flex-basis: 72px;
   }
 
   .app-content {
-    padding: 16px;
+    padding: 14px;
+    padding-bottom: 108px;
+    border-radius: 24px 24px 0 0;
+    min-height: 100vh;
   }
 
   .topbar,
@@ -2757,9 +2859,57 @@ body.dark .stat-card.is-featured {
     align-items: stretch;
   }
 
+  .topbar {
+    padding: 18px;
+    gap: 16px;
+    border-radius: 24px;
+  }
+
+  .topbar h1 {
+    font-size: 1.45rem;
+    line-height: 1.1;
+  }
+
+  .topbar-actions,
+  .section-actions {
+    width: 100%;
+  }
+
+  .topbar-actions > *,
+  .section-actions > *,
+  .toolbar > * {
+    width: 100%;
+  }
+
+  .club-switcher.is-interactive,
+  .club-switcher {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .club-switcher-badge {
+    width: 100%;
+  }
+
   .member-form,
   .payment-form {
     grid-template-columns: 1fr;
+  }
+
+  .section-card,
+  .stat-card,
+  .settings-logo-field,
+  .crm-kpi-card,
+  .crm-summary-card,
+  .crm-debt-card,
+  .crm-personal-item,
+  .crm-contact-chip,
+  .calendar-detail-panel {
+    padding: 18px;
+  }
+
+  .stat-card {
+    min-height: auto;
   }
 
   .member-card {
@@ -2812,14 +2962,37 @@ body.dark .stat-card.is-featured {
     grid-template-columns: 1fr;
   }
 
+  .chart-bars,
+  .chart-bars-wide {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: 220px;
+    gap: 12px;
+  }
+
+  .bar-track {
+    height: 156px;
+    border-radius: 18px;
+    padding: 10px;
+  }
+
   .calendar-grid,
   .calendar-weekdays {
     gap: 6px;
   }
 
   .calendar-day {
-    min-height: 84px;
-    padding: 10px 8px;
+    min-height: 78px;
+    padding: 8px 6px;
+    border-radius: 14px;
+  }
+
+  .calendar-day-number {
+    font-size: 0.92rem;
+  }
+
+  .calendar-day-count,
+  .calendar-day-empty {
+    font-size: 0.68rem;
   }
 
   .calendar-agenda-item {
@@ -2829,5 +3002,19 @@ body.dark .stat-card.is-featured {
 
   .calendar-agenda-meta {
     justify-items: start;
+  }
+
+  .mobile-nav {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    gap: 4px;
+    padding: 8px;
+    border-radius: 20px;
+  }
+
+  .mobile-nav-item {
+    padding: 9px 4px;
+    font-size: 0.65rem;
   }
 }
