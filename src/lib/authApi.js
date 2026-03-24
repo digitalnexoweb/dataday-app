@@ -2,6 +2,29 @@ import { supabase, supabaseEnabled } from "./supabase";
 
 const SUPERADMIN_EMAIL = "digitalnexoweb@gmail.com";
 
+function getResetPasswordUrl() {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  return `${window.location.origin}/reset-password`;
+}
+
+function hasRecoveryTokensInUrl() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+  return (
+    hash.includes("type=recovery") ||
+    search.includes("type=recovery") ||
+    hash.includes("access_token=") ||
+    search.includes("access_token=")
+  );
+}
+
 function isMissingLogoColumnError(error) {
   const message = error?.message || "";
   return (
@@ -100,8 +123,7 @@ export const authApi = {
   },
 
   async requestPasswordSetup(email) {
-    const redirectTo =
-      typeof window === "undefined" ? undefined : `${window.location.origin}${window.location.pathname}`;
+    const redirectTo = getResetPasswordUrl();
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) {
@@ -109,25 +131,37 @@ export const authApi = {
     }
   },
 
-  isPasswordRecoveryFlow() {
+  isResetPasswordRoute() {
     if (typeof window === "undefined") {
       return false;
     }
 
-    const hash = window.location.hash || "";
-    const search = window.location.search || "";
-    const hasRecoveryType = hash.includes("type=recovery") || search.includes("type=recovery");
-    const hasAccessToken = hash.includes("access_token=") || search.includes("access_token=");
-
-    return hasRecoveryType || hasAccessToken;
+    return window.location.pathname === "/reset-password";
   },
 
-  clearAuthRedirectUrl() {
+  hasRecoveryTokens() {
+    return hasRecoveryTokensInUrl();
+  },
+
+  isPasswordRecoveryFlow() {
+    return this.isResetPasswordRoute() && this.hasRecoveryTokens();
+  },
+
+  redirectRecoveryToResetPassword() {
+    if (typeof window === "undefined" || this.isResetPasswordRoute() || !this.hasRecoveryTokens()) {
+      return;
+    }
+
+    const targetUrl = `${getResetPasswordUrl()}${window.location.search || ""}${window.location.hash || ""}`;
+    window.location.replace(targetUrl);
+  },
+
+  clearAuthRedirectUrl(nextPath = "/") {
     if (typeof window === "undefined") {
       return;
     }
 
-    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+    const cleanUrl = `${window.location.origin}${nextPath}`;
     window.history.replaceState({}, document.title, cleanUrl);
   },
 

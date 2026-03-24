@@ -4,6 +4,7 @@ import { MobileNav } from "../components/MobileNav";
 import { Sidebar } from "../components/Sidebar";
 import { AdminRequestsPage } from "../features/admin/AdminRequestsPage";
 import { AuthPage } from "../features/auth/AuthPage";
+import { ResetPasswordPage } from "../features/auth/ResetPasswordPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { MembersPage } from "../features/members/MembersPage";
 import { MemberFormPage } from "../features/members/MemberFormPage";
@@ -58,9 +59,7 @@ export default function App() {
     error: "",
     authEvent: "",
   });
-  const isPasswordRecovery =
-    supabaseEnabled &&
-    (authApi.isPasswordRecoveryFlow() || authState.authEvent === "PASSWORD_RECOVERY");
+  const isResetPasswordRoute = authApi.isResetPasswordRoute();
 
   useEffect(() => {
     let ignore = false;
@@ -117,6 +116,14 @@ export default function App() {
     document.body.dataset.theme = theme;
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
+  useEffect(() => {
+    if (!supabaseEnabled) {
+      return;
+    }
+
+    authApi.redirectRecoveryToResetPassword();
+  }, []);
+
 
   useEffect(() => {
     if (!supabaseEnabled || !authState.profile?.club_id || !authState.profile?.clubs) {
@@ -320,8 +327,15 @@ export default function App() {
     );
   }
 
-  if (isPasswordRecovery) {
-    return <AuthPage authError={authState.error} />;
+  if (isResetPasswordRoute) {
+    return (
+      <ResetPasswordPage
+        authError={authState.error}
+        authEvent={authState.authEvent}
+        hasSession={Boolean(authState.session)}
+        loading={authState.loading}
+      />
+    );
   }
 
   if (supabaseEnabled && !authState.session) {
