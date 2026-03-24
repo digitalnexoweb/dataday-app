@@ -116,7 +116,10 @@ export const authApi = {
 
     const hash = window.location.hash || "";
     const search = window.location.search || "";
-    return hash.includes("type=recovery") || search.includes("type=recovery");
+    const hasRecoveryType = hash.includes("type=recovery") || search.includes("type=recovery");
+    const hasAccessToken = hash.includes("access_token=") || search.includes("access_token=");
+
+    return hasRecoveryType || hasAccessToken;
   },
 
   clearAuthRedirectUrl() {

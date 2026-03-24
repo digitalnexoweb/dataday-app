@@ -27,8 +27,16 @@ export function SetPasswordForm() {
 
     try {
       await authApi.updatePassword(form.password);
-      authApi.clearAuthRedirectUrl();
-      window.location.replace(`${window.location.origin}${window.location.pathname}`);
+      setStatus({
+        loading: false,
+        success: "Contrasena actualizada correctamente. Redirigiendo...",
+        error: "",
+      });
+
+      window.setTimeout(() => {
+        authApi.clearAuthRedirectUrl();
+        window.location.replace(`${window.location.origin}${window.location.pathname}`);
+      }, 1400);
     } catch (error) {
       setStatus({ loading: false, success: "", error: error.message });
     }
