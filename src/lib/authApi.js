@@ -1,7 +1,7 @@
 import { supabase, supabaseEnabled } from "./supabase";
 import { isMissingLogoColumnError } from "./utils";
 
-const SUPERADMIN_EMAIL = "digitalnexoweb@gmail.com";
+export const SUPERADMIN_EMAIL = "digitalnexoweb@gmail.com";
 
 function getResetPasswordUrl() {
   if (typeof window === "undefined") {

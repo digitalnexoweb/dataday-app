@@ -6,4 +6,3 @@ dist/
 *.log
 .netlify/
 supabase/.temp/
-SESSION_NOTES.md
