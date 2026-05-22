@@ -128,6 +128,21 @@ async function getLocalData() {
 }
 
 export const dataApi = {
+  async uploadFile(file, bucket, path) {
+    if (!supabaseEnabled) {
+      return null;
+    }
+
+    const { data, error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(data.path);
+    return publicUrl;
+  },
+
   async getClubs() {
     if (!supabaseEnabled) {
       return [];

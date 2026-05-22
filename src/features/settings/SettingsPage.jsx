@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { SectionCard } from "../../components/SectionCard";
 import { PAYMENT_METHOD_OPTIONS } from "../../lib/appSettings";
+import { dataApi } from "../../lib/dataApi";
 import { supabaseEnabled } from "../../lib/supabase";
 
-export function SettingsPage({ appSettings, onUpdateSettings }) {
+const MAX_LOGO_BYTES = 500 * 1024; // M15: 500 KB client-side guard
+
+export function SettingsPage({ appSettings, onUpdateSettings, effectiveClubId }) {
   const [form, setForm] = useState(appSettings);
   const [saved, setSaved] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -22,29 +25,41 @@ export function SettingsPage({ appSettings, onUpdateSettings }) {
     setSaveError("");
   }
 
-  function handleLogoFileChange(event) {
+  async function handleLogoFileChange(event) {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    event.target.value = "";
+
+    if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setUploadError("Selecciona una imagen valida en formato JPG, PNG, WEBP, SVG o similar.");
-      event.target.value = "";
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateField("clubLogo", String(reader.result || ""));
+    if (file.size > MAX_LOGO_BYTES) {
+      setUploadError("El logo no puede superar 500 KB. Reduce el tamano y vuelve a intentar.");
+      return;
+    }
+
+    try {
+      if (supabaseEnabled && effectiveClubId) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${effectiveClubId}/logo-${Date.now()}.${ext}`;
+        const publicUrl = await dataApi.uploadFile(file, "club-logos", path);
+        updateField("clubLogo", publicUrl);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          updateField("clubLogo", String(reader.result || ""));
+          setUploadError("");
+        };
+        reader.onerror = () => setUploadError("No pudimos leer la imagen. Intenta nuevamente con otro archivo.");
+        reader.readAsDataURL(file);
+      }
       setUploadError("");
-      event.target.value = "";
-    };
-    reader.onerror = () => {
-      setUploadError("No pudimos leer la imagen. Intenta nuevamente con otro archivo.");
-      event.target.value = "";
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      setUploadError(error.message || "No se pudo subir el logo.");
+    }
   }
 
   function handleRemoveLogo() {

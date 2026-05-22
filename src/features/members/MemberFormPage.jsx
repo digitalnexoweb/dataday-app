@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { SectionCard } from "../../components/SectionCard";
+import { dataApi } from "../../lib/dataApi";
+import { supabaseEnabled } from "../../lib/supabase";
+
+const MAX_PHOTO_BYTES = 500 * 1024; // M15: 500 KB client-side guard
 
 function buildInitialState(selectedMember) {
   return {
@@ -40,6 +44,7 @@ export function MemberFormPage({
   onSaveCategory,
   canManageClubScopedData,
   isAllClubsView,
+  effectiveClubId,
 }) {
   const [form, setForm] = useState(buildInitialState(selectedMember));
   const [categoryForm, setCategoryForm] = useState(buildCategoryState());
@@ -65,25 +70,36 @@ export function MemberFormPage({
 
   async function handlePhotoChange(event) {
     const file = event.target.files?.[0];
+    event.target.value = "";
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setStatus({ type: "error", message: "Selecciona una imagen valida para la foto del socio." });
       return;
     }
 
+    if (file.size > MAX_PHOTO_BYTES) {
+      setStatus({ type: "error", message: "La imagen no puede superar 500 KB. Reduce el tamano y vuelve a intentar." });
+      return;
+    }
+
     try {
-      const photoUrl = await readFileAsDataUrl(file);
+      let photoUrl;
+
+      if (supabaseEnabled && effectiveClubId) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${effectiveClubId}/${selectedMember?.id ?? "new"}-${Date.now()}.${ext}`;
+        photoUrl = await dataApi.uploadFile(file, "member-photos", path);
+      } else {
+        photoUrl = await readFileAsDataUrl(file);
+      }
+
       setForm((current) => ({ ...current, photoUrl }));
       setStatus({ type: "idle", message: "" });
     } catch (error) {
-      setStatus({ type: "error", message: error.message });
+      setStatus({ type: "error", message: error.message || "No se pudo subir la imagen." });
     }
-
-    event.target.value = "";
   }
 
   async function handleCreateCategory(event) {
