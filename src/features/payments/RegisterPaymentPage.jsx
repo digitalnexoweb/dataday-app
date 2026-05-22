@@ -182,7 +182,7 @@ export function RegisterPaymentPage({
           {selected ? <p className="helper-text">Categoria actual: {selected.categoryName}</p> : <span />}
           <div className="toolbar">
             {lastReceipt ? (
-              <button className="secondary-button" type="button" onClick={() => downloadPaymentReceipt(lastReceipt)}>
+              <button className="secondary-button" type="button" onClick={() => downloadPaymentReceipt(lastReceipt, appSettings)}>
                 Descargar recibo
               </button>
             ) : null}

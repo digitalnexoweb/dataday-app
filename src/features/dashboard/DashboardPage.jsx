@@ -164,6 +164,14 @@ export function DashboardPage({
   isAllClubsView,
   activeClubName,
 }) {
+  if (appData.loading) {
+    return (
+      <div className="auth-shell" style={{ minHeight: "auto", padding: "3rem" }}>
+        <p className="auth-helper-text">Cargando datos del dashboard...</p>
+      </div>
+    );
+  }
+
   const { members, payments, categories } = appData;
   const metrics = useMemo(() => buildMetrics(members, payments), [members, payments]);
   const categoryEntries = useMemo(

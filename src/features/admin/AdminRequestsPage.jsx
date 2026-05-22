@@ -3,10 +3,17 @@ import { SectionCard } from "../../components/SectionCard";
 import { authApi } from "../../lib/authApi";
 import { formatDate } from "../../lib/format";
 
+const STATUS_LABELS = {
+  pending: "Pendiente",
+  approved: "Aprobado",
+  rejected: "Rechazado",
+};
+
 export function AdminRequestsPage({ authState }) {
   const [requests, setRequests] = useState([]);
   const [status, setStatus] = useState({ loading: true, message: "", error: "" });
   const [activationLinks, setActivationLinks] = useState({});
+  const [confirm, setConfirm] = useState({ requestId: null, action: null });
 
   useEffect(() => {
     async function loadRequests() {
@@ -27,7 +34,16 @@ export function AdminRequestsPage({ authState }) {
     [requests],
   );
 
+  function requestConfirm(requestId, action) {
+    setConfirm({ requestId, action });
+  }
+
+  function cancelConfirm() {
+    setConfirm({ requestId: null, action: null });
+  }
+
   async function handleReview(requestId, action) {
+    setConfirm({ requestId: null, action: null });
     try {
       const result = await authApi.reviewAccessRequest(requestId, action, authState?.profile ?? null);
       if (result.activationUrl) {
@@ -103,6 +119,22 @@ export function AdminRequestsPage({ authState }) {
           {status.error ? <p className="error-banner">{status.error}</p> : null}
         </div>
 
+        {confirm.requestId ? (
+          <div className="warning-banner" style={{ marginBottom: "1rem" }}>
+            <strong>
+              {confirm.action === "approve" ? "Aprobar" : "Rechazar"} esta solicitud. Esta accion no se puede deshacer.
+            </strong>
+            <div className="toolbar" style={{ marginTop: "0.75rem", gap: "0.5rem" }}>
+              <button className="primary-button" type="button" onClick={() => handleReview(confirm.requestId, confirm.action)}>
+                Confirmar
+              </button>
+              <button className="secondary-button" type="button" onClick={cancelConfirm}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="admin-requests-list">
           {requests.map((request) => (
             <article key={request.id} className="admin-request-card">
@@ -113,7 +145,7 @@ export function AdminRequestsPage({ authState }) {
                     <p>{request.club_name}</p>
                   </div>
                   <span className={`status-badge ${request.status === "approved" ? "current" : request.status === "rejected" ? "late" : "pending"}`}>
-                    {request.status}
+                    {STATUS_LABELS[request.status] ?? request.status}
                   </span>
                 </div>
                 <div className="member-contact-list">
@@ -136,16 +168,16 @@ export function AdminRequestsPage({ authState }) {
                 <button
                   className="primary-button member-card-button"
                   type="button"
-                  disabled={request.status !== "pending"}
-                  onClick={() => handleReview(request.id, "approve")}
+                  disabled={request.status !== "pending" || Boolean(confirm.requestId)}
+                  onClick={() => requestConfirm(request.id, "approve")}
                 >
                   Aprobar
                 </button>
                 <button
                   className="secondary-button member-card-button"
                   type="button"
-                  disabled={request.status !== "pending"}
-                  onClick={() => handleReview(request.id, "reject")}
+                  disabled={request.status !== "pending" || Boolean(confirm.requestId)}
+                  onClick={() => requestConfirm(request.id, "reject")}
                 >
                   Rechazar
                 </button>

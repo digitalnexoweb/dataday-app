@@ -227,6 +227,7 @@ export function MembersPage({
 
         <MemberDetailPanel
           member={activeMember}
+          appSettings={appSettings}
           canManageClubScopedData={canManageClubScopedData}
           isAllClubsView={isAllClubsView}
           onEdit={() => activeMember && onNavigate({ section: "member-form", memberId: activeMember.id })}

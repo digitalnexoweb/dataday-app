@@ -34,6 +34,7 @@ function buildMedicalForm(record) {
 
 export function MemberDetailPanel({
   member,
+  appSettings = null,
   canManageClubScopedData,
   isAllClubsView,
   onEdit,
@@ -64,9 +65,10 @@ export function MemberDetailPanel({
     );
   }
 
+  const clubName = appSettings?.clubName?.trim() || "DataDay Cuotas";
   const whatsappUrl = member.phone
     ? `https://wa.me/${member.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
-        `Hola ${member.fullName}, te escribimos desde DataDay Cuotas.`,
+        `Hola ${member.fullName}, te escribimos desde ${clubName}.`,
       )}`
     : null;
   const emailUrl = member.email ? `mailto:${member.email}` : null;
