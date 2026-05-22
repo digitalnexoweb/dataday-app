@@ -40,12 +40,14 @@ export function MemberDetailPanel({
   onEdit,
   onRegisterPayment,
   onSaveMedicalRecord,
+  onToggleMemberActive,
   topSlot = null,
 }) {
   const [activeTab, setActiveTab] = useState("summary");
   const [isEditingMedical, setIsEditingMedical] = useState(false);
   const [medicalForm, setMedicalForm] = useState(buildMedicalForm(member?.medicalRecord));
   const [medicalStatus, setMedicalStatus] = useState({ type: "idle", message: "" });
+  const [toggling, setToggling] = useState(false);
 
   const paymentRows = useMemo(() => member?.payments ?? [], [member]);
 
@@ -63,6 +65,16 @@ export function MemberDetailPanel({
         <p>La ficha completa aparecera aqui con resumen, pagos, deuda y datos personales.</p>
       </div>
     );
+  }
+
+  async function handleToggleActive() {
+    if (!onToggleMemberActive) return;
+    setToggling(true);
+    try {
+      await onToggleMemberActive(member.id, !member.active);
+    } finally {
+      setToggling(false);
+    }
   }
 
   const clubName = appSettings?.clubName?.trim() || "DataDay Cuotas";
@@ -131,7 +143,15 @@ export function MemberDetailPanel({
           <button className="secondary-button" type="button" onClick={onEdit} disabled={!canManageClubScopedData}>
             Editar datos
           </button>
-          <button className="primary-button" type="button" onClick={onRegisterPayment} disabled={!canManageClubScopedData}>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleToggleActive}
+            disabled={!canManageClubScopedData || toggling}
+          >
+            {member.active ? "Archivar socio" : "Reactivar socio"}
+          </button>
+          <button className="primary-button" type="button" onClick={onRegisterPayment} disabled={!canManageClubScopedData || !member.active}>
             Registrar pago
           </button>
         </div>
@@ -156,6 +176,9 @@ export function MemberDetailPanel({
         </div>
       </div>
 
+      {!member.active ? (
+        <p className="warning-banner">Este socio esta archivado y no figura en el listado activo. Reactiva para habilitarlo nuevamente.</p>
+      ) : null}
       {isAllClubsView ? (
         <p className="warning-banner">Selecciona un club activo desde el header para editar socios o registrar pagos.</p>
       ) : null}

@@ -87,6 +87,7 @@ export function MembersPage({
   activeClubName,
   selectedMember,
   onSaveMedicalRecord,
+  onToggleMemberActive,
 }) {
   const initialStatusFilter = view?.statusFilter ?? "all";
   const [search, setSearch] = useState("");
@@ -118,6 +119,9 @@ export function MembersPage({
 
     return memberSummaries
       .filter((member) => {
+        if (statusFilter === "inactive") return !member.active;
+        if (!member.active) return false;
+
         const haystack = [member.fullName, member.phone, member.email, member.categoryName].join(" ").toLowerCase();
         const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
         const matchesStatus =
@@ -236,6 +240,7 @@ export function MembersPage({
           onEdit={() => activeMember && onNavigate({ section: "member-form", memberId: activeMember.id })}
           onRegisterPayment={() => activeMember && onNavigate({ section: "register-payment", memberId: activeMember.id })}
           onSaveMedicalRecord={onSaveMedicalRecord}
+          onToggleMemberActive={onToggleMemberActive}
           topSlot={
             <div className="crm-members-topbar">
               <div className="crm-members-topbar-copy">
@@ -274,6 +279,7 @@ export function MembersPage({
                   <option value="current">Al dia</option>
                   <option value="pending">Proximo a vencer</option>
                   <option value="late">Atrasados</option>
+                  <option value="inactive">Archivados</option>
                 </select>
                 <div className="members-count-chip">
                   {filteredMembers.length} {filteredMembers.length === 1 ? "socio" : "socios"}

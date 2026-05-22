@@ -6,12 +6,32 @@ import { supabaseEnabled } from "../../lib/supabase";
 
 const MAX_LOGO_BYTES = 500 * 1024; // M15: 500 KB client-side guard
 
-export function SettingsPage({ appSettings, onUpdateSettings, effectiveClubId }) {
+function buildCategoryEditForm(category) {
+  return {
+    id: category.id,
+    name: category.name ?? "",
+    monthlyFee: category.monthlyFee ?? category.monthly_fee ?? "",
+    description: category.description ?? "",
+  };
+}
+
+export function SettingsPage({
+  appSettings,
+  onUpdateSettings,
+  effectiveClubId,
+  appData,
+  onUpdateCategory,
+  onDeleteCategory,
+  canManageClubScopedData,
+}) {
   const [form, setForm] = useState(appSettings);
   const [saved, setSaved] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [categoryEditForm, setCategoryEditForm] = useState(null);
+  const [categoryActionStatus, setCategoryActionStatus] = useState({ type: "idle", message: "" });
 
   useEffect(() => {
     setForm(appSettings);
@@ -97,6 +117,42 @@ export function SettingsPage({ appSettings, onUpdateSettings, effectiveClubId })
       setSaved(false);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function startEditCategory(category) {
+    setEditingCategoryId(category.id);
+    setCategoryEditForm(buildCategoryEditForm(category));
+    setCategoryActionStatus({ type: "idle", message: "" });
+  }
+
+  function cancelEditCategory() {
+    setEditingCategoryId(null);
+    setCategoryEditForm(null);
+    setCategoryActionStatus({ type: "idle", message: "" });
+  }
+
+  async function handleSaveCategory() {
+    try {
+      await onUpdateCategory(categoryEditForm);
+      cancelEditCategory();
+      setCategoryActionStatus({ type: "success", message: "Categoria actualizada correctamente." });
+    } catch (error) {
+      setCategoryActionStatus({ type: "error", message: error.message || "No se pudo guardar la categoria." });
+    }
+  }
+
+  async function handleDeleteCategory(categoryId) {
+    const hasMembers = (appData?.members ?? []).some((m) => String(m.categoryId) === String(categoryId));
+    if (hasMembers) {
+      setCategoryActionStatus({ type: "error", message: "No puedes eliminar una categoria que tiene socios asignados." });
+      return;
+    }
+    try {
+      await onDeleteCategory(categoryId);
+      setCategoryActionStatus({ type: "success", message: "Categoria eliminada correctamente." });
+    } catch (error) {
+      setCategoryActionStatus({ type: "error", message: error.message || "No se pudo eliminar la categoria." });
     }
   }
 
@@ -237,6 +293,86 @@ export function SettingsPage({ appSettings, onUpdateSettings, effectiveClubId })
           {saveError ? <p className="error-banner">{saveError}</p> : null}
           {saved ? <p className="success-banner">Configuracion guardada correctamente.</p> : null}
         </form>
+      </SectionCard>
+      <SectionCard title="Categorias" subtitle="Edita o elimina categorias existentes. Para crear una nueva, usa el formulario de alta de socios.">
+        {categoryActionStatus.type === "success" ? <p className="success-banner">{categoryActionStatus.message}</p> : null}
+        {categoryActionStatus.type === "error" ? <p className="error-banner">{categoryActionStatus.message}</p> : null}
+
+        {(appData?.categories ?? []).length === 0 ? (
+          <p className="helper-text">No hay categorias creadas aun.</p>
+        ) : (
+          <div className="category-list">
+            {(appData?.categories ?? []).map((category) =>
+              editingCategoryId === category.id ? (
+                <div key={category.id} className="category-edit-row">
+                  <div className="inline-create-grid">
+                    <label>
+                      Nombre
+                      <input
+                        value={categoryEditForm.name}
+                        onChange={(e) => setCategoryEditForm((f) => ({ ...f, name: e.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      Cuota mensual
+                      <input
+                        type="number"
+                        min="0"
+                        value={categoryEditForm.monthlyFee}
+                        onChange={(e) => setCategoryEditForm((f) => ({ ...f, monthlyFee: e.target.value }))}
+                      />
+                    </label>
+                    <label className="full-span">
+                      Descripcion
+                      <input
+                        value={categoryEditForm.description}
+                        onChange={(e) => setCategoryEditForm((f) => ({ ...f, description: e.target.value }))}
+                      />
+                    </label>
+                  </div>
+                  <div className="form-footer">
+                    <button className="secondary-button" type="button" onClick={cancelEditCategory}>
+                      Cancelar
+                    </button>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={handleSaveCategory}
+                      disabled={!categoryEditForm.name.trim()}
+                    >
+                      Guardar cambios
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div key={category.id} className="category-row">
+                  <div className="category-row-info">
+                    <strong>{category.name}</strong>
+                    <span>{category.description || "Sin descripcion"}</span>
+                  </div>
+                  <div className="category-row-actions">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => startEditCategory(category)}
+                      disabled={!canManageClubScopedData}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => handleDeleteCategory(category.id)}
+                      disabled={!canManageClubScopedData}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+        )}
       </SectionCard>
     </div>
   );

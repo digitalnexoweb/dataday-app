@@ -206,10 +206,14 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       try {
-        const data = await dataApi.getAppData(effectiveClubId, {
-          isSuperAdmin: isAllClubsView,
-        });
+        const [data, clubSettings] = await Promise.all([
+          dataApi.getAppData(effectiveClubId, { isSuperAdmin: isAllClubsView }),
+          dataApi.getClubSettings(effectiveClubId),
+        ]);
         setAppData({ ...data, loading: false, error: "" });
+        if (clubSettings) {
+          setAppSettings((current) => ({ ...current, ...clubSettings }));
+        }
       } catch (error) {
         setAppData({ members: [], categories: [], payments: [], medicalRecords: [], loading: false, error: error.message || "No se pudieron cargar los datos." });
       }
@@ -271,6 +275,7 @@ export default function App() {
       return;
     }
 
+    await dataApi.saveClubSettings(nextSettings, authState.profile.club_id);
     const updatedClub = await dataApi.saveClubBranding(nextSettings, authState.profile.club_id);
     const refreshedProfile = await authApi.getProfile(authState.session.user.id);
 
@@ -285,6 +290,37 @@ export default function App() {
           : club,
       ),
     );
+  }
+
+  async function handleToggleMemberActive(memberId, active) {
+    if (supabaseEnabled && !effectiveClubId) {
+      throw new Error("Selecciona un club antes de modificar socios.");
+    }
+
+    await dataApi.toggleMemberActive(memberId, active, effectiveClubId);
+    setAppData((current) => ({
+      ...current,
+      members: current.members.map((m) => (m.id === memberId ? { ...m, active } : m)),
+    }));
+  }
+
+  async function handleUpdateCategory(payload) {
+    if (supabaseEnabled && !effectiveClubId) {
+      throw new Error("Selecciona un club antes de editar categorias.");
+    }
+
+    const result = await dataApi.updateCategory(payload, appData.categories, effectiveClubId);
+    setAppData((current) => ({ ...current, categories: result.categories }));
+    return result.category;
+  }
+
+  async function handleDeleteCategory(categoryId) {
+    if (supabaseEnabled && !effectiveClubId) {
+      throw new Error("Selecciona un club antes de eliminar categorias.");
+    }
+
+    const categories = await dataApi.deleteCategory(categoryId, appData.categories, effectiveClubId);
+    setAppData((current) => ({ ...current, categories }));
   }
 
   async function handleLogout() {
@@ -309,6 +345,9 @@ export default function App() {
     onSaveMember: handleSaveMember,
     onSaveCategory: handleSaveCategory,
     onSaveMedicalRecord: handleSaveMedicalRecord,
+    onToggleMemberActive: handleToggleMemberActive,
+    onUpdateCategory: handleUpdateCategory,
+    onDeleteCategory: handleDeleteCategory,
     appSettings,
     onUpdateSettings: handleUpdateSettings,
     authState,

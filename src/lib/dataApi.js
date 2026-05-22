@@ -37,6 +37,7 @@ function normalizeMemberRecord(member, allCategories) {
     categoryName: member.categoryName ?? member.categorias?.name ?? category?.name ?? "Sin categoria",
     notes: member.notes ?? "",
     photoUrl: member.photoUrl ?? member.photo_url ?? DEFAULT_PHOTO_URL,
+    active: member.active ?? true,
   };
 }
 
@@ -70,7 +71,7 @@ async function getSupabaseData(clubId, isSuperAdmin = false) {
   const membersQuery = supabase
     .from("socios")
     .select(
-      "id, full_name, birth_date, address, phone, email, enrollment_date, notes, photo_url, category_id, club_id, categorias(name)",
+      "id, full_name, birth_date, address, phone, email, enrollment_date, notes, photo_url, category_id, club_id, active, categorias(name)",
     )
     .order("full_name");
   const categoriesQuery = supabase.from("categorias").select("*").order("name");
@@ -141,6 +142,127 @@ export const dataApi = {
 
     const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(data.path);
     return publicUrl;
+  },
+
+  async toggleMemberActive(memberId, active, clubId = null) {
+    if (supabaseEnabled && clubId) {
+      const { error } = await supabase
+        .from("socios")
+        .update({ active })
+        .eq("id", memberId)
+        .eq("club_id", clubId);
+
+      if (error) {
+        throw error;
+      }
+    }
+  },
+
+  async updateCategory(payload, currentCategories, clubId = null) {
+    const normalizedName = payload.name.trim();
+    const duplicate = currentCategories.some(
+      (c) => String(c.id) !== String(payload.id) && c.name.trim().toLowerCase() === normalizedName.toLowerCase(),
+    );
+
+    if (duplicate) {
+      throw new Error("Ya existe una categoria con ese nombre.");
+    }
+
+    if (supabaseEnabled && clubId) {
+      const { data, error } = await supabase
+        .from("categorias")
+        .update({
+          name: normalizedName,
+          description: payload.description || null,
+          monthly_fee: Number(payload.monthlyFee || 0),
+        })
+        .eq("id", payload.id)
+        .eq("club_id", clubId)
+        .select("*")
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return {
+        category: data,
+        categories: sortCategoriesByName(currentCategories.map((c) => (String(c.id) === String(payload.id) ? data : c))),
+      };
+    }
+
+    const updated = {
+      ...currentCategories.find((c) => String(c.id) === String(payload.id)),
+      name: normalizedName,
+      description: payload.description || "",
+      monthlyFee: Number(payload.monthlyFee || 0),
+    };
+
+    return {
+      category: updated,
+      categories: sortCategoriesByName(currentCategories.map((c) => (String(c.id) === String(payload.id) ? updated : c))),
+    };
+  },
+
+  async deleteCategory(categoryId, currentCategories, clubId = null) {
+    if (supabaseEnabled && clubId) {
+      const { error } = await supabase.from("categorias").delete().eq("id", categoryId).eq("club_id", clubId);
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    return currentCategories.filter((c) => String(c.id) !== String(categoryId));
+  },
+
+  async getClubSettings(clubId) {
+    if (!supabaseEnabled || !clubId) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from("club_settings")
+      .select("*")
+      .eq("club_id", clubId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      dueDay: data.due_day ?? 10,
+      lateFeePercent: data.late_fee_percent ?? 0,
+      defaultMonthlyFee: data.default_monthly_fee ?? 0,
+      paymentMethods: data.payment_methods ?? { cash: true, transfer: true, card: false },
+    };
+  },
+
+  async saveClubSettings(settings, clubId) {
+    if (!supabaseEnabled || !clubId) {
+      return;
+    }
+
+    const { error } = await supabase.from("club_settings").upsert(
+      {
+        club_id: clubId,
+        due_day: settings.dueDay ?? 10,
+        late_fee_percent: settings.lateFeePercent ?? 0,
+        default_monthly_fee: settings.defaultMonthlyFee ?? 0,
+        payment_methods: settings.paymentMethods ?? { cash: true, transfer: true, card: false },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "club_id" },
+    );
+
+    if (error) {
+      throw error;
+    }
   },
 
   async getClubs() {
