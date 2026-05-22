@@ -1,18 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/access-request-review.ts";
+import { corsHeaders, getUserByEmail } from "../_shared/access-request-review.ts";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
-}
-
-async function findUserByEmail(adminClient: ReturnType<typeof createClient>, email: string) {
-  const { data, error } = await adminClient.auth.admin.listUsers();
-
-  if (error) {
-    throw error;
-  }
-
-  return data.users.find((item) => item.email?.toLowerCase() === email) ?? null;
 }
 
 Deno.serve(async (request) => {
@@ -57,7 +47,7 @@ Deno.serve(async (request) => {
       });
     }
 
-    const existingUser = await findUserByEmail(adminClient, email);
+    const existingUser = await getUserByEmail(adminClient, email);
     let authUserId = existingUser?.id ?? null;
 
     if (existingUser) {
@@ -174,7 +164,8 @@ Deno.serve(async (request) => {
       },
     );
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

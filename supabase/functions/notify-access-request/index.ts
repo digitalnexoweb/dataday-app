@@ -1,6 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildActionToken, corsHeaders } from "../_shared/access-request-review.ts";
 
+// C10: Sanitize user-supplied strings before HTML interpolation.
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildHtml(payload: {
   requestId?: number | null;
   fullName: string;
@@ -12,6 +22,13 @@ function buildHtml(payload: {
   approveUrl?: string;
   rejectUrl?: string;
 }) {
+  const fullName = escapeHtml(payload.fullName);
+  const email = escapeHtml(payload.email);
+  const clubName = escapeHtml(payload.clubName);
+  const phone = escapeHtml(payload.phone || "Sin telefono");
+  const message = escapeHtml(payload.message || "Sin mensaje");
+  const createdAt = escapeHtml(payload.createdAt || "Ahora");
+
   return `
     <div style="font-family: Arial, sans-serif; background: #f4f7fb; padding: 24px;">
       <div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 18px; padding: 28px; border: 1px solid #e4edf8;">
@@ -22,12 +39,12 @@ function buildHtml(payload: {
         <p style="margin: 0 0 24px; color: #69829a;">Un club o academia envio una nueva solicitud para usar la plataforma.</p>
 
         <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 10px 0; color: #69829a;">Nombre</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${payload.fullName}</td></tr>
-          <tr><td style="padding: 10px 0; color: #69829a;">Email</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${payload.email}</td></tr>
-          <tr><td style="padding: 10px 0; color: #69829a;">Club</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${payload.clubName}</td></tr>
-          <tr><td style="padding: 10px 0; color: #69829a;">Telefono</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${payload.phone || "Sin telefono"}</td></tr>
-          <tr><td style="padding: 10px 0; color: #69829a;">Mensaje</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${payload.message || "Sin mensaje"}</td></tr>
-          <tr><td style="padding: 10px 0; color: #69829a;">Fecha</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${payload.createdAt || "Ahora"}</td></tr>
+          <tr><td style="padding: 10px 0; color: #69829a;">Nombre</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${fullName}</td></tr>
+          <tr><td style="padding: 10px 0; color: #69829a;">Email</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${email}</td></tr>
+          <tr><td style="padding: 10px 0; color: #69829a;">Club</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${clubName}</td></tr>
+          <tr><td style="padding: 10px 0; color: #69829a;">Telefono</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${phone}</td></tr>
+          <tr><td style="padding: 10px 0; color: #69829a;">Mensaje</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${message}</td></tr>
+          <tr><td style="padding: 10px 0; color: #69829a;">Fecha</td><td style="padding: 10px 0; color: #17314a; font-weight: 700;">${createdAt}</td></tr>
         </table>
 
         ${
@@ -56,6 +73,7 @@ Deno.serve(async (request) => {
 
   try {
     const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+    const fromAddress = Deno.env.get("RESEND_FROM_EMAIL") ?? "DataDay Cuotas <onboarding@resend.dev>"; // C3
     const adminEmail = Deno.env.get("ADMIN_NOTIFICATION_EMAIL") ?? "digitalnexoweb@gmail.com";
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -103,7 +121,7 @@ Deno.serve(async (request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "DataDay Cuotas <onboarding@resend.dev>",
+        from: fromAddress,
         to: [adminEmail],
         subject: `Nueva solicitud de acceso - ${payload.clubName}`,
         html: buildHtml({
@@ -127,7 +145,8 @@ Deno.serve(async (request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

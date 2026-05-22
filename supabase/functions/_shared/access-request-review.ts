@@ -1,11 +1,24 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPERADMIN_EMAIL = "digitalnexoweb@gmail.com";
+const PRODUCTION_ORIGIN = "https://data-day-app367d.netlify.app";
+const TOKEN_TTL_SECONDS = 72 * 60 * 60;
 
+// C6: Restrict CORS to the configured frontend origin instead of wildcard.
 export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("APP_BASE_URL") ?? PRODUCTION_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// C10: Sanitize any user-supplied string before interpolating into HTML.
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function buildCredentialEmailHtml(payload: {
   fullName: string;
@@ -13,6 +26,12 @@ function buildCredentialEmailHtml(payload: {
   email: string;
   activationUrl: string;
 }) {
+  const fullName = escapeHtml(payload.fullName);
+  const clubName = escapeHtml(payload.clubName);
+  const email = escapeHtml(payload.email);
+  // activationUrl is generated server-side; escape as an extra precaution.
+  const activationUrl = escapeHtml(payload.activationUrl);
+
   return `
     <div style="font-family: Arial, sans-serif; background: #f4f7fb; padding: 24px;">
       <div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 18px; padding: 28px; border: 1px solid #e4edf8;">
@@ -21,21 +40,21 @@ function buildCredentialEmailHtml(payload: {
         </p>
         <h1 style="margin: 0 0 12px; color: #17314a;">Tu acceso fue aprobado</h1>
         <p style="margin: 0 0 22px; color: #69829a;">
-          ${payload.clubName} ya tiene acceso activo a DataDay Cuotas.
+          ${clubName} ya tiene acceso activo a DataDay Cuotas.
         </p>
 
         <div style="padding: 18px; border-radius: 16px; background: #f7fbff; border: 1px solid #d9e8fb; margin-bottom: 18px;">
           <p style="margin: 0 0 10px; color: #69829a;">Usuario autorizado</p>
-          <strong style="display: block; color: #17314a; font-size: 18px;">${payload.email}</strong>
+          <strong style="display: block; color: #17314a; font-size: 18px;">${email}</strong>
         </div>
 
         <p style="margin: 0 0 18px; color: #17314a;">
           Ya puedes entrar con la contrasena que elegiste al solicitar acceso. Si necesitas crearla de nuevo o cambiarla, usa este enlace:
         </p>
-        <a href="${payload.activationUrl}" style="display:inline-block; padding:14px 20px; border-radius:14px; background:linear-gradient(135deg, #ff8f32, #ffac59); color:#17263c; font-weight:700; text-decoration:none; margin-bottom:18px;">
+        <a href="${activationUrl}" style="display:inline-block; padding:14px 20px; border-radius:14px; background:linear-gradient(135deg, #ff8f32, #ffac59); color:#17263c; font-weight:700; text-decoration:none; margin-bottom:18px;">
           Crear o cambiar contrasena
         </a>
-        <p style="margin: 0; color: #69829a;">Bienvenido a DataDay Cuotas, ${payload.fullName}.</p>
+        <p style="margin: 0; color: #69829a;">Bienvenido a DataDay Cuotas, ${fullName}.</p>
       </div>
     </div>
   `;
@@ -49,12 +68,14 @@ function randomPassword(length = 12) {
 
 async function sendCredentialEmail({
   resendApiKey,
+  fromAddress,
   email,
   fullName,
   clubName,
   activationUrl,
 }: {
   resendApiKey: string;
+  fromAddress: string;
   email: string;
   fullName: string;
   clubName: string;
@@ -71,15 +92,10 @@ async function sendCredentialEmail({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "DataDay Cuotas <onboarding@resend.dev>",
+      from: fromAddress, // C3: configurable sender
       to: [email],
       subject: "Tu acceso a DataDay Cuotas fue aprobado",
-      html: buildCredentialEmailHtml({
-        fullName,
-        clubName,
-        email,
-        activationUrl,
-      }),
+      html: buildCredentialEmailHtml({ fullName, clubName, email, activationUrl }),
     }),
   });
 
@@ -108,17 +124,32 @@ async function ensureClub(adminClient: ReturnType<typeof createClient>, clubName
   return createdClub;
 }
 
+// C4: Paginate through auth users to avoid the 1000-user hard limit of a single listUsers() call.
+export async function getUserByEmail(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+): Promise<{ id: string; email?: string } | null> {
+  const perPage = 1000;
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+
+    const found = data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+    if (found) return found;
+    if (data.users.length < perPage) return null;
+    page++;
+  }
+}
+
 async function ensureApprovedUserForRequest(
   adminClient: ReturnType<typeof createClient>,
   accessRequest: any,
   clubId: number,
 ) {
-  const { data: usersData, error: usersError } = await adminClient.auth.admin.listUsers();
-  if (usersError) {
-    throw usersError;
-  }
-
-  const existingUser = usersData.users.find((item) => item.email === accessRequest.email);
+  // C4: Use paginated lookup instead of a single unbounded listUsers() call.
+  const existingUser = await getUserByEmail(adminClient, accessRequest.email);
   const bootstrapPassword = randomPassword();
   let authUserId = existingUser?.id ?? null;
 
@@ -214,7 +245,15 @@ export async function generateActivationLinkForRequest(requestId: string | numbe
   };
 }
 
-export async function buildActionToken(secret: string, requestId: string | number, action: string) {
+// C5: Token embeds an issued-at timestamp (Unix seconds). Format: "<ts>.<hex-hmac>"
+// This makes tokens self-expiring without needing to store them server-side.
+export async function buildActionToken(
+  secret: string,
+  requestId: string | number,
+  action: string,
+  issuedAt?: number,
+): Promise<string> {
+  const ts = issuedAt ?? Math.floor(Date.now() / 1000);
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -222,12 +261,32 @@ export async function buildActionToken(secret: string, requestId: string | numbe
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${requestId}:${action}`));
-  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`${requestId}:${action}:${ts}`),
+  );
+  const hex = Array.from(new Uint8Array(signature), (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${ts}.${hex}`;
 }
 
-export async function verifyActionToken(secret: string, requestId: string | number, action: string, token: string) {
-  const expectedToken = await buildActionToken(secret, requestId, action);
+export async function verifyActionToken(
+  secret: string,
+  requestId: string | number,
+  action: string,
+  token: string,
+): Promise<boolean> {
+  const dotIndex = token.indexOf(".");
+  if (dotIndex === -1) return false;
+
+  const ts = parseInt(token.slice(0, dotIndex), 10);
+  if (isNaN(ts)) return false;
+
+  // C5: Reject tokens older than 72 hours.
+  const now = Math.floor(Date.now() / 1000);
+  if (now - ts > TOKEN_TTL_SECONDS) return false;
+
+  const expectedToken = await buildActionToken(secret, requestId, action, ts);
   return expectedToken === token;
 }
 
@@ -243,6 +302,8 @@ export async function processAccessRequestReview({
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+  // C3: Sender address is configurable via env var instead of hardcoded.
+  const fromAddress = Deno.env.get("RESEND_FROM_EMAIL") ?? "DataDay Cuotas <onboarding@resend.dev>";
   const appBaseUrl = Deno.env.get("APP_BASE_URL") ?? "http://localhost:5173";
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
@@ -303,6 +364,7 @@ export async function processAccessRequestReview({
 
     await sendCredentialEmail({
       resendApiKey,
+      fromAddress,
       email: accessRequest.email,
       fullName: accessRequest.full_name,
       clubName: accessRequest.club_name,
