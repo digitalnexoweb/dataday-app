@@ -2,12 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { MemberDetailPanel } from "../../components/MemberDetailPanel";
 import { MemberList } from "../../components/MemberList";
 import { getCurrentFeeStatus, MONTH_NAMES } from "../../lib/format";
+import { getMonthlyFee } from "../../lib/utils";
 
 const PAGE_SIZE = 20;
-
-function getMonthlyFee(category, appSettings) {
-  return Number(category?.monthlyFee ?? category?.monthly_fee ?? appSettings.defaultMonthlyFee ?? 0);
-}
 
 function toLocalIsoDate(date) {
   const year = date.getFullYear();
@@ -27,64 +24,56 @@ function buildNextDueDate(status, appSettings) {
   return toLocalIsoDate(dueDate);
 }
 
-function buildMemberSummary(member, appData, appSettings) {
-  const memberPayments = appData.payments
-    .filter((payment) => payment.memberId === member.id)
+// Recibe índices pre-calculados para evitar O(N×M) lookups en cada socio.
+function buildMemberSummary(member, { paymentsByMemberId, categoryById, medicalRecordByMemberId }, appSettings) {
+  const memberPayments = (paymentsByMemberId.get(String(member.id)) ?? [])
+    .slice()
     .sort((left, right) => new Date(right.paymentDate) - new Date(left.paymentDate));
   const lastPayment = memberPayments[0] ?? null;
-  const category = appData.categories.find((item) => String(item.id) === String(member.categoryId));
-  const monthlyFee = getMonthlyFee(category, appSettings);
+  const category = categoryById.get(String(member.categoryId));
+  const monthlyFee = getMonthlyFee(category, appSettings.defaultMonthlyFee);
   const today = new Date();
   const dueDay = appSettings.dueDay ?? 10;
-  const currentYear = today.getFullYear();
-  const paidPeriods = new Set(
-    memberPayments
-      .filter((payment) => payment.year === currentYear)
-      .map((payment) => `${payment.month}-${payment.year}`),
-  );
+  const paidPeriods = new Set(memberPayments.map((payment) => `${payment.month}-${payment.year}`));
   const enrollmentDate = member.enrollmentDate ? new Date(`${member.enrollmentDate}T00:00:00`) : null;
-  const enrollmentYear = enrollmentDate?.getFullYear() ?? currentYear;
+  const enrollmentYear = enrollmentDate?.getFullYear() ?? today.getFullYear();
   const enrollmentMonth = (enrollmentDate?.getMonth() ?? 0) + 1;
+  const currentYear = today.getFullYear();
   const lastChargeableMonth = today.getDate() <= dueDay ? today.getMonth() : today.getMonth() + 1;
-  const firstChargeableMonth = enrollmentYear === currentYear ? enrollmentMonth : 1;
-  const chargeableMonths =
-    enrollmentYear > currentYear || firstChargeableMonth > lastChargeableMonth
-      ? []
-      : Array.from({ length: lastChargeableMonth - firstChargeableMonth + 1 }, (_, index) => firstChargeableMonth + index);
-  const overdueMonthIndexes = chargeableMonths.filter((month) => !paidPeriods.has(`${month}-${currentYear}`));
-  const baseDebt = monthlyFee * overdueMonthIndexes.length;
-  const surcharge = overdueMonthIndexes.length > 0 ? baseDebt * ((appSettings.lateFeePercent ?? 0) / 100) : 0;
-  const pendingDebt = baseDebt + surcharge;
 
-  const medicalRecord =
-    appData.medicalRecords.find((record) => String(record.memberId) === String(member.id)) ?? null;
+  // Deuda multi-año: desde el año de inscripcion hasta el año actual
+  const overduePeriods = [];
+  for (let year = enrollmentYear; year <= currentYear; year++) {
+    const startMonth = year === enrollmentYear ? enrollmentMonth : 1;
+    const endMonth = year === currentYear ? lastChargeableMonth : 12;
+    if (endMonth <= 0) continue;
+    for (let month = startMonth; month <= endMonth; month++) {
+      if (!paidPeriods.has(`${month}-${year}`)) {
+        overduePeriods.push({ month, year });
+      }
+    }
+  }
+
+  const baseDebt = monthlyFee * overduePeriods.length;
+  const surcharge = overduePeriods.length > 0 ? baseDebt * ((appSettings.lateFeePercent ?? 0) / 100) : 0;
+  const pendingDebt = baseDebt + surcharge;
+  const medicalRecord = medicalRecordByMemberId.get(String(member.id)) ?? null;
+  const currencyFormatter = new Intl.NumberFormat("es-UY", { style: "currency", currency: "UYU", maximumFractionDigits: 0 });
 
   return {
     ...member,
     payments: memberPayments,
     medicalRecord,
-    accountStatus: getCurrentFeeStatus(member, appData.payments, { dueDay }),
+    accountStatus: getCurrentFeeStatus(member, memberPayments, { dueDay }),
     lastPaymentLabel: lastPayment?.paymentDate
       ? new Intl.DateTimeFormat("es-UY").format(new Date(`${lastPayment.paymentDate}T00:00:00`))
       : "Sin registro",
     nextDueLabel: new Intl.DateTimeFormat("es-UY").format(new Date(`${buildNextDueDate(member.accountStatus, appSettings)}T00:00:00`)),
     monthlyFee,
-    monthlyFeeLabel:
-      monthlyFee > 0
-        ? new Intl.NumberFormat("es-UY", { style: "currency", currency: "UYU", maximumFractionDigits: 0 }).format(
-            monthlyFee,
-          )
-        : "Sin definir",
+    monthlyFeeLabel: monthlyFee > 0 ? currencyFormatter.format(monthlyFee) : "Sin definir",
     pendingDebt,
-    pendingDebtLabel:
-      pendingDebt > 0
-        ? new Intl.NumberFormat("es-UY", { style: "currency", currency: "UYU", maximumFractionDigits: 0 }).format(
-            pendingDebt,
-          )
-        : "Sin deuda",
-    pendingMonths: overdueMonthIndexes.map((month) =>
-      `${MONTH_NAMES[month - 1]} ${currentYear}`,
-    ),
+    pendingDebtLabel: pendingDebt > 0 ? currencyFormatter.format(pendingDebt) : "Sin deuda",
+    pendingMonths: overduePeriods.map(({ month, year }) => `${MONTH_NAMES[month - 1]} ${year}`),
   };
 }
 
@@ -105,9 +94,23 @@ export function MembersPage({
   const [page, setPage] = useState(1);
   const [selectedMemberId, setSelectedMemberId] = useState(selectedMember?.id ?? null);
 
+  const dataIndexes = useMemo(() => {
+    const paymentsByMemberId = new Map();
+    for (const payment of appData.payments) {
+      const key = String(payment.memberId);
+      if (!paymentsByMemberId.has(key)) paymentsByMemberId.set(key, []);
+      paymentsByMemberId.get(key).push(payment);
+    }
+    const categoryById = new Map(appData.categories.map((c) => [String(c.id), c]));
+    const medicalRecordByMemberId = new Map(
+      appData.medicalRecords.map((r) => [String(r.memberId), r]),
+    );
+    return { paymentsByMemberId, categoryById, medicalRecordByMemberId };
+  }, [appData.payments, appData.categories, appData.medicalRecords]);
+
   const memberSummaries = useMemo(
-    () => appData.members.map((member) => buildMemberSummary(member, appData, appSettings)),
-    [appData, appSettings],
+    () => appData.members.map((member) => buildMemberSummary(member, dataIndexes, appSettings)),
+    [appData.members, dataIndexes, appSettings],
   );
 
   const filteredMembers = useMemo(() => {

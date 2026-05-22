@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SectionCard } from "../../components/SectionCard";
 import { StatCard } from "../../components/StatCard";
 import { formatCurrency, MONTH_NAMES } from "../../lib/format";
+import { getMonthlyFee } from "../../lib/utils";
 
 function getRevenueForPeriod(payments, month, year) {
   return payments
@@ -30,10 +31,6 @@ function isSameDay(left, right) {
     left.getMonth() === right.getMonth() &&
     left.getDate() === right.getDate()
   );
-}
-
-function getMonthlyFee(category, fallbackFee) {
-  return Number(category?.monthlyFee ?? category?.monthly_fee ?? fallbackFee ?? 0);
 }
 
 function buildMetrics(members, payments) {

@@ -1,4 +1,5 @@
 import { supabase, supabaseEnabled } from "./supabase";
+import { isMissingLogoColumnError } from "./utils";
 
 const SUPERADMIN_EMAIL = "digitalnexoweb@gmail.com";
 
@@ -22,14 +23,6 @@ function hasRecoveryTokensInUrl() {
     search.includes("type=recovery") ||
     hash.includes("access_token=") ||
     search.includes("access_token=")
-  );
-}
-
-function isMissingLogoColumnError(error) {
-  const message = error?.message || "";
-  return (
-    message.includes("logo_url") &&
-    (message.includes("does not exist") || message.includes("Could not find"))
   );
 }
 

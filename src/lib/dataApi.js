@@ -1,17 +1,9 @@
 import { categories, medicalRecords, members, payments } from "../data/mockData";
 import { getCurrentFeeStatus } from "./format";
 import { supabase, supabaseEnabled } from "./supabase";
+import { isMissingLogoColumnError } from "./utils";
 
-const DEFAULT_PHOTO_URL =
-  "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?auto=format&fit=crop&w=300&q=80";
-
-function isMissingLogoColumnError(error) {
-  const message = error?.message || "";
-  return (
-    message.includes("logo_url") &&
-    (message.includes("does not exist") || message.includes("Could not find"))
-  );
-}
+const DEFAULT_PHOTO_URL = "/default-avatar.svg";
 
 function hydrateMembers(rawMembers, allPayments) {
   return rawMembers.map((member) => ({

@@ -46,24 +46,29 @@ export function getChargeablePeriods(member, options = {}) {
   const lastChargeableMonth = now.getDate() <= dueDay ? currentMonth - 1 : currentMonth;
   const enrollment = getEnrollmentParts(member?.enrollmentDate ?? member?.enrollment_date ?? "");
 
-  if (lastChargeableMonth <= 0) {
-    return [];
-  }
-
   if (enrollment && enrollment.year > currentYear) {
     return [];
   }
 
-  const startMonth = enrollment && enrollment.year === currentYear ? enrollment.month : 1;
+  const enrollmentYear = enrollment?.year ?? currentYear;
+  const enrollmentMonth = enrollment?.month ?? 1;
 
-  if (startMonth > lastChargeableMonth) {
-    return [];
+  const periods = [];
+
+  for (let year = enrollmentYear; year <= currentYear; year++) {
+    const startMonth = year === enrollmentYear ? enrollmentMonth : 1;
+    const endMonth = year === currentYear ? lastChargeableMonth : 12;
+
+    if (endMonth <= 0) {
+      continue;
+    }
+
+    for (let month = startMonth; month <= endMonth; month++) {
+      periods.push({ month, year });
+    }
   }
 
-  return Array.from({ length: lastChargeableMonth - startMonth + 1 }, (_, index) => ({
-    month: startMonth + index,
-    year: currentYear,
-  }));
+  return periods;
 }
 
 export function getStatusLabel(status) {
