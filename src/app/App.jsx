@@ -50,6 +50,7 @@ export default function App() {
     payments: [],
     medicalRecords: [],
     loading: true,
+    error: "",
   });
   const [appSettings, setAppSettings] = useState(() => loadAppSettings());
   const [authState, setAuthState] = useState({
@@ -204,16 +205,20 @@ export default function App() {
 
   useEffect(() => {
     async function loadData() {
-      const data = await dataApi.getAppData(effectiveClubId, {
-        isSuperAdmin: isAllClubsView,
-      });
-      setAppData({ ...data, loading: false });
+      try {
+        const data = await dataApi.getAppData(effectiveClubId, {
+          isSuperAdmin: isAllClubsView,
+        });
+        setAppData({ ...data, loading: false, error: "" });
+      } catch (error) {
+        setAppData({ members: [], categories: [], payments: [], medicalRecords: [], loading: false, error: error.message || "No se pudieron cargar los datos." });
+      }
     }
 
     if (!supabaseEnabled || effectiveClubId || isAllClubsView) {
       loadData();
     } else if (supabaseEnabled && authState.profile && !authState.profile.club_id) {
-      setAppData({ members: [], categories: [], payments: [], medicalRecords: [], loading: false });
+      setAppData({ members: [], categories: [], payments: [], medicalRecords: [], loading: false, error: "" });
     }
   }, [authState.profile, effectiveClubId, isAllClubsView]);
 
@@ -399,6 +404,11 @@ export default function App() {
             />
           ) : null}
           <section className={isMembersWorkspace ? "page-stage is-crm-layout-page" : "page-stage"}>
+            {appData.error ? (
+              <div className="auth-shell" style={{ minHeight: "auto", padding: "1.5rem" }}>
+                <p className="error-banner">{appData.error}</p>
+              </div>
+            ) : null}
             {view.section === "dashboard" && <DashboardPage {...screenProps} />}
             {(view.section === "members" || view.section === "member-detail") && <MembersPage {...screenProps} />}
             {view.section === "member-form" && <MemberFormPage {...screenProps} />}

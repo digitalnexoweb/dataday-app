@@ -276,7 +276,7 @@ export const dataApi = {
     };
 
     if (supabaseEnabled && clubId) {
-      await supabase.from("pagos").insert({
+      const { error } = await supabase.from("pagos").insert({
         member_id: payload.memberId,
         club_id: clubId,
         month: payload.month,
@@ -286,6 +286,10 @@ export const dataApi = {
         payment_date: payload.paymentDate,
         notes: payload.notes,
       });
+
+      if (error) {
+        throw error;
+      }
     }
 
     return [nextPayment, ...currentPayments];
