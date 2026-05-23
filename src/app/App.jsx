@@ -7,6 +7,7 @@ import { AuthPage } from "../features/auth/AuthPage";
 import { ResetPasswordPage } from "../features/auth/ResetPasswordPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { MembersPage } from "../features/members/MembersPage";
+import { MemberDetailPage } from "../features/members/MemberDetailPage";
 import { MemberFormPage } from "../features/members/MemberFormPage";
 import { RegisterPaymentPage } from "../features/payments/RegisterPaymentPage";
 import { PaymentsHistoryPage } from "../features/payments/PaymentsHistoryPage";
@@ -336,8 +337,6 @@ export default function App() {
     () => appData.members.find((member) => member.id === view.memberId) ?? null,
     [appData.members, view.memberId],
   );
-  const isMembersWorkspace = view.section === "members" || view.section === "member-detail";
-
   const screenProps = {
     view,
     appData,
@@ -425,32 +424,31 @@ export default function App() {
           isSuperAdmin={isSuperAdmin}
           onLogout={handleLogout}
         />
-        <main className={isMembersWorkspace ? "app-content is-crm-layout" : "app-content"}>
-          {!isMembersWorkspace ? (
-            <Header
-              currentSection={view.section}
-              selectedMember={selectedMember}
-              onNavigate={setView}
-              appSettings={appSettings}
-              authState={authState}
-              availableClubs={availableClubs}
-              selectedClubId={selectedClubId}
-              onSelectClub={setSelectedClubId}
-              activeClubName={activeClubName}
-              activeClub={activeClub}
-              isAllClubsView={isAllClubsView}
-              theme={theme}
-              onToggleTheme={handleToggleTheme}
-            />
-          ) : null}
-          <section className={isMembersWorkspace ? "page-stage is-crm-layout-page" : "page-stage"}>
+        <main className="app-content">
+          <Header
+            currentSection={view.section}
+            selectedMember={selectedMember}
+            onNavigate={setView}
+            appSettings={appSettings}
+            authState={authState}
+            availableClubs={availableClubs}
+            selectedClubId={selectedClubId}
+            onSelectClub={setSelectedClubId}
+            activeClubName={activeClubName}
+            activeClub={activeClub}
+            isAllClubsView={isAllClubsView}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+          />
+          <section className="page-stage">
             {appData.error ? (
               <div className="auth-shell" style={{ minHeight: "auto", padding: "1.5rem" }}>
                 <p className="error-banner">{appData.error}</p>
               </div>
             ) : null}
             {view.section === "dashboard" && <DashboardPage {...screenProps} />}
-            {(view.section === "members" || view.section === "member-detail") && <MembersPage {...screenProps} />}
+            {view.section === "members" && <MembersPage {...screenProps} />}
+            {view.section === "member-detail" && <MemberDetailPage {...screenProps} />}
             {view.section === "member-form" && <MemberFormPage {...screenProps} />}
             {view.section === "register-payment" && <RegisterPaymentPage {...screenProps} />}
             {view.section === "payments-history" && <PaymentsHistoryPage {...screenProps} />}
