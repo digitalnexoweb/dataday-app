@@ -144,7 +144,7 @@ export function AdminRequestsPage({ authState }) {
                     <strong>{request.full_name}</strong>
                     <p>{request.club_name}</p>
                   </div>
-                  <span className={`status-badge ${request.status === "approved" ? "current" : request.status === "rejected" ? "late" : "pending"}`}>
+                  <span className={`status-badge is-${request.status === "approved" ? "current" : request.status === "rejected" ? "late" : "pending"}`}>
                     {STATUS_LABELS[request.status] ?? request.status}
                   </span>
                 </div>

@@ -25,7 +25,8 @@ function loadInitialTheme() {
   }
 
   const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return storedTheme === "dark" ? "dark" : "light";
+  if (storedTheme === "light" || storedTheme === "dark") return storedTheme;
+  return "dark";
 }
 
 function getClubInitials(name) {

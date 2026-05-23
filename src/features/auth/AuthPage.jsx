@@ -33,14 +33,14 @@ export function AuthPage({ authError }) {
         {!isPasswordRecovery ? (
           <div className="auth-tabs">
             <button
-              className={mode === "login" ? "secondary-button auth-tab active" : "secondary-button auth-tab"}
+              className={mode === "login" ? "auth-tab is-active" : "auth-tab"}
               onClick={() => setMode("login")}
               type="button"
             >
-              Login
+              Iniciar sesión
             </button>
             <button
-              className={mode === "register" ? "secondary-button auth-tab active" : "secondary-button auth-tab"}
+              className={mode === "register" ? "auth-tab is-active" : "auth-tab"}
               onClick={() => setMode("register")}
               type="button"
             >

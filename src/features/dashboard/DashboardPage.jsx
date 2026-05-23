@@ -161,15 +161,7 @@ export function DashboardPage({
   isAllClubsView,
   activeClubName,
 }) {
-  if (appData.loading) {
-    return (
-      <div className="auth-shell" style={{ minHeight: "auto", padding: "3rem" }}>
-        <p className="auth-helper-text">Cargando datos del dashboard...</p>
-      </div>
-    );
-  }
-
-  const { members, payments, categories } = appData;
+  const { members = [], payments = [], categories = [] } = appData;
   const metrics = useMemo(() => buildMetrics(members, payments), [members, payments]);
   const categoryEntries = useMemo(
     () =>
@@ -181,17 +173,8 @@ export function DashboardPage({
       ),
     [members],
   );
-  const maxCategoryCount = Math.max(...categoryEntries.map(([, count]) => count), 1);
   const monthlySeries = useMemo(() => buildMonthlySeries(payments), [payments]);
-  const maxSeries = Math.max(...monthlySeries.map((item) => item.total), 1);
-  const lateMembersPreview = members
-    .filter((member) => member.accountStatus === "late")
-    .slice(0, 4);
-  const revenueChangeLabel = `${metrics.revenueChange >= 0 ? "+" : ""}${metrics.revenueChange.toFixed(0)}% respecto a ${
-    MONTH_NAMES[metrics.previousPeriod.month - 1]
-  }`;
   const [visibleMonthDate, setVisibleMonthDate] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-
   const calendarData = useMemo(
     () =>
       buildCalendarData({
@@ -204,12 +187,27 @@ export function DashboardPage({
       }),
     [appSettings.defaultMonthlyFee, appSettings.dueDay, categories, members, payments, visibleMonthDate],
   );
-
   const [selectedDateKey, setSelectedDateKey] = useState(calendarData.dueKey);
   useEffect(() => {
     setSelectedDateKey(calendarData.dueKey);
   }, [calendarData.dueKey]);
 
+  if (appData.loading) {
+    return (
+      <div className="auth-shell" style={{ minHeight: "auto", padding: "3rem" }}>
+        <p className="auth-helper-text">Cargando datos del dashboard...</p>
+      </div>
+    );
+  }
+
+  const maxCategoryCount = Math.max(...categoryEntries.map(([, count]) => count), 1);
+  const maxSeries = Math.max(...monthlySeries.map((item) => item.total), 1);
+  const lateMembersPreview = members
+    .filter((member) => member.accountStatus === "late")
+    .slice(0, 4);
+  const revenueChangeLabel = `${metrics.revenueChange >= 0 ? "+" : ""}${metrics.revenueChange.toFixed(0)}% respecto a ${
+    MONTH_NAMES[metrics.previousPeriod.month - 1]
+  }`;
   const selectedDay = calendarData.days.find((day) => day.isoDate === selectedDateKey) ?? calendarData.days[0] ?? null;
   const selectedDayItems = selectedDay?.items ?? [];
   const calendarTitle = `${MONTH_NAMES[visibleMonthDate.getMonth()]} ${visibleMonthDate.getFullYear()}`;
@@ -348,7 +346,7 @@ export function DashboardPage({
                     <p>{count} registrados</p>
                   </div>
                   <div className="inline-progress">
-                    <span style={{ width: `${(count / maxCategoryCount) * 100}%` }} />
+                    <span className="inline-progress-fill" style={{ width: `${(count / maxCategoryCount) * 100}%` }} />
                   </div>
                 </div>
               ))}
@@ -383,26 +381,26 @@ export function DashboardPage({
           >
             <div className="calendar-legend">
               <span className="calendar-legend-item">
-                <i className="status-dot overdue" /> Vencidos
+                <i className="status-dot is-overdue" /> Vencidos
               </span>
               <span className="calendar-legend-item">
-                <i className="status-dot upcoming" /> Proximos
+                <i className="status-dot is-upcoming" /> Próximos
               </span>
               <span className="calendar-legend-item">
-                <i className="status-dot paid" /> Pagados
+                <i className="status-dot is-paid" /> Pagados
               </span>
             </div>
 
             <div className="calendar-summary-strip">
-              <div className="calendar-summary-card">
+              <div className="calendar-summary-card is-overdue">
                 <span>Vencidos</span>
                 <strong>{calendarData.statusCounts.overdue}</strong>
               </div>
-              <div className="calendar-summary-card">
-                <span>Proximos</span>
+              <div className="calendar-summary-card is-upcoming">
+                <span>Próximos</span>
                 <strong>{calendarData.statusCounts.upcoming}</strong>
               </div>
-              <div className="calendar-summary-card">
+              <div className="calendar-summary-card is-paid">
                 <span>Pagados</span>
                 <strong>{calendarData.statusCounts.paid}</strong>
               </div>
@@ -441,9 +439,9 @@ export function DashboardPage({
                       <>
                         <span className="calendar-day-count">{day.items.length} venc.</span>
                         <span className="calendar-day-markers" aria-hidden="true">
-                          {counts.overdue > 0 ? <i className="status-dot overdue" /> : null}
-                          {counts.upcoming > 0 ? <i className="status-dot upcoming" /> : null}
-                          {counts.paid > 0 ? <i className="status-dot paid" /> : null}
+                          {counts.overdue > 0 ? <i className="status-dot is-overdue" /> : null}
+                          {counts.upcoming > 0 ? <i className="status-dot is-upcoming" /> : null}
+                          {counts.paid > 0 ? <i className="status-dot is-paid" /> : null}
                         </span>
                       </>
                     ) : (

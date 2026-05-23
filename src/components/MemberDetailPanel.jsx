@@ -56,7 +56,8 @@ export function MemberDetailPanel({
     setIsEditingMedical(false);
     setMedicalForm(buildMedicalForm(member?.medicalRecord));
     setMedicalStatus({ type: "idle", message: "" });
-  }, [member?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member?.id]); // intentionally only reset when member changes, not on every medicalRecord update
 
   if (!member) {
     return (
