@@ -124,12 +124,6 @@ export function Header({
               Nuevo socio
             </button>
             <button
-              className="secondary-button"
-              onClick={() => onNavigate({ section: "members", memberId: null })}
-            >
-              Ver socios
-            </button>
-            <button
               className="primary-button"
               onClick={() =>
                 onNavigate({

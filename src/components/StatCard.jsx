@@ -5,6 +5,8 @@ export function StatCard({
   accent = "blue",
   emphasis = "neutral",
   featured = false,
+  wide = false,
+  trendDir = null,
   onClick = null,
 }) {
   function handleKeyDown(event) {
@@ -18,13 +20,23 @@ export function StatCard({
     }
   }
 
+  const cls = [
+    "stat-card",
+    `accent-${accent}`,
+    `emphasis-${emphasis}`,
+    featured ? "is-featured" : "",
+    wide ? "is-wide" : "",
+    onClick ? "is-clickable" : "",
+  ].filter(Boolean).join(" ");
+
+  const trendCls = [
+    "stat-card-trend",
+    trendDir === "up" ? "is-up" : trendDir === "down" ? "is-down" : "",
+  ].filter(Boolean).join(" ");
+
   return (
     <article
-      className={
-        onClick
-          ? `stat-card accent-${accent} emphasis-${emphasis}${featured ? " is-featured" : ""} is-clickable`
-          : `stat-card accent-${accent} emphasis-${emphasis}${featured ? " is-featured" : ""}`
-      }
+      className={cls}
       onClick={onClick ?? undefined}
       onKeyDown={handleKeyDown}
       role={onClick ? "button" : undefined}
@@ -33,7 +45,7 @@ export function StatCard({
       <span className="stat-card-accent" aria-hidden="true" />
       <p className="stat-card-label">{label}</p>
       <strong className="stat-card-value">{value}</strong>
-      <span className="stat-card-trend">{trend}</span>
+      <span className={trendCls}>{trend}</span>
     </article>
   );
 }
