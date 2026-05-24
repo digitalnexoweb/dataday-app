@@ -90,24 +90,6 @@ export function MemberCard({ member, onOpen, onRegisterPayment, canRegisterPayme
         >
           Registrar pago
         </button>
-        <a
-          className={
-            member.pendingDebt > 0
-              ? "member-card-link"
-              : "member-card-link is-disabled"
-          }
-          href={member.pendingDebt > 0 ? member.reminderUrl : undefined}
-          target={member.pendingDebt > 0 ? "_blank" : undefined}
-          rel={member.pendingDebt > 0 ? "noreferrer" : undefined}
-          aria-disabled={member.pendingDebt <= 0}
-          onClick={(event) => {
-            if (member.pendingDebt <= 0) {
-              event.preventDefault();
-            }
-          }}
-        >
-          Recordatorio
-        </a>
       </div>
     </article>
   );
