@@ -83,16 +83,26 @@ async function getSupabaseData(clubId, isSuperAdmin = false) {
     .from("medical_records")
     .select("*")
     .order("updated_at", { ascending: false });
+  const creditsQuery = supabase
+    .from("saldo_a_favor")
+    .select("id, member_id, club_id, amount, payment_date, notes")
+    .order("created_at");
 
   if (!isSuperAdmin && clubId) {
     membersQuery.eq("club_id", clubId);
     categoriesQuery.eq("club_id", clubId);
     paymentsQuery.eq("club_id", clubId);
     medicalRecordsQuery.eq("club_id", clubId);
+    creditsQuery.eq("club_id", clubId);
   }
 
-  const [{ data: membersData }, { data: categoriesData }, { data: paymentsData }, { data: medicalRecordsData }] =
-    await Promise.all([membersQuery, categoriesQuery, paymentsQuery, medicalRecordsQuery]);
+  const [
+    { data: membersData },
+    { data: categoriesData },
+    { data: paymentsData },
+    { data: medicalRecordsData },
+    { data: creditsData },
+  ] = await Promise.all([membersQuery, categoriesQuery, paymentsQuery, medicalRecordsQuery, creditsQuery]);
 
   const formattedPayments = (paymentsData ?? []).map((payment) => ({
     id: payment.id,
@@ -111,11 +121,21 @@ async function getSupabaseData(clubId, isSuperAdmin = false) {
     formattedPayments,
   );
 
+  const formattedCredits = (creditsData ?? []).map((c) => ({
+    id: c.id,
+    memberId: c.member_id,
+    clubId: c.club_id,
+    amount: Number(c.amount),
+    paymentDate: c.payment_date,
+    notes: c.notes ?? "",
+  }));
+
   return {
     members: formattedMembers,
     categories: categoriesData ?? [],
     payments: formattedPayments,
     medicalRecords: (medicalRecordsData ?? []).map((record) => normalizeMedicalRecord(record)),
+    credits: formattedCredits,
   };
 }
 
@@ -125,6 +145,7 @@ async function getLocalData() {
     categories,
     payments,
     medicalRecords,
+    credits: [],
   };
 }
 
@@ -399,39 +420,75 @@ export const dataApi = {
   },
 
   async registerPayment(payload, currentPayments, clubId = null) {
-    const nextPayment = {
-      id: currentPayments.length + 1,
-      ...payload,
-    };
-
+    // payload: { memberId, memberName, totalAmount, monthlyFee, periods[], creditRemainder,
+    //            isPartialPayment, existingCredit, paymentMethod, paymentDate, notes }
     if (supabaseEnabled && clubId) {
-      const { error } = await supabase.from("pagos").insert({
-        member_id: payload.memberId,
-        club_id: clubId,
-        month: payload.month,
-        year: payload.year,
-        amount: payload.amount,
-        payment_method: payload.paymentMethod,
-        payment_date: payload.paymentDate,
-        notes: payload.notes,
-      });
+      for (const period of payload.periods) {
+        const { error } = await supabase.from("pagos").insert({
+          member_id: payload.memberId,
+          club_id: clubId,
+          month: period.month,
+          year: period.year,
+          amount: payload.monthlyFee,
+          payment_method: payload.paymentMethod,
+          payment_date: payload.paymentDate,
+          notes: payload.notes,
+        });
+        // Ignore unique-constraint violations (period already paid)
+        if (error && error.code !== "23505") throw error;
+      }
 
-      if (error) {
-        throw error;
+      // Replace credit for this member: delete existing, insert remainder if any
+      await supabase.from("saldo_a_favor").delete().eq("member_id", payload.memberId).eq("club_id", clubId);
+      const newCreditAmount = payload.isPartialPayment ? payload.totalAmount : payload.creditRemainder;
+      if (newCreditAmount > 0) {
+        const { error } = await supabase.from("saldo_a_favor").insert({
+          member_id: payload.memberId,
+          club_id: clubId,
+          amount: newCreditAmount,
+          payment_date: payload.paymentDate,
+          notes: payload.isPartialPayment ? (payload.notes || "Abono parcial") : "Saldo a favor automatico",
+        });
+        if (error) throw error;
       }
     }
 
-    return [nextPayment, ...currentPayments];
+    // Optimistic local state: one entry per period registered
+    const newPayments = payload.periods.map((period, i) => ({
+      id: Date.now() + i,
+      memberId: payload.memberId,
+      memberName: payload.memberName,
+      month: period.month,
+      year: period.year,
+      amount: payload.monthlyFee,
+      paymentMethod: payload.paymentMethod,
+      paymentDate: payload.paymentDate,
+      notes: payload.notes,
+    }));
+
+    return [...newPayments, ...currentPayments];
   },
 
   async registerPaymentAndRefresh(payload, currentData, clubId = null) {
     const payments = await this.registerPayment(payload, currentData.payments, clubId);
     const members = sortMembersByName(hydrateMembers([...currentData.members], payments));
 
-    return {
-      payments,
-      members,
-    };
+    // Optimistic credit update
+    const newCreditAmount = payload.isPartialPayment ? payload.totalAmount : payload.creditRemainder;
+    const creditsWithoutMember = (currentData.credits ?? []).filter(
+      (c) => String(c.memberId) !== String(payload.memberId),
+    );
+    const credits = newCreditAmount > 0
+      ? [...creditsWithoutMember, {
+          id: Date.now(),
+          memberId: payload.memberId,
+          amount: newCreditAmount,
+          paymentDate: payload.paymentDate,
+          notes: payload.isPartialPayment ? (payload.notes || "Abono parcial") : "Saldo a favor automatico",
+        }]
+      : creditsWithoutMember;
+
+    return { payments, members, credits };
   },
 
   async saveCategory(payload, currentCategories, clubId = null) {

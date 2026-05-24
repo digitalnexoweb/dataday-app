@@ -13,7 +13,7 @@ export function MemberDetailPage({
   onToggleMemberActive,
 }) {
   const dataIndexes = useMemo(
-    () => buildDataIndexes(appData.payments, appData.categories, appData.medicalRecords),
+    () => buildDataIndexes(appData.payments, appData.categories, appData.medicalRecords, appData.credits ?? []),
     [appData.payments, appData.categories, appData.medicalRecords],
   );
 

@@ -1,23 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { SectionCard } from "../../components/SectionCard";
 import { PAYMENT_METHOD_OPTIONS } from "../../lib/appSettings";
+import { formatCurrency, MONTH_NAMES } from "../../lib/format";
+import { computePaymentPlan } from "../../lib/memberUtils";
 import { downloadPaymentReceipt } from "../../lib/receipt";
-import { MONTH_NAMES } from "../../lib/format";
 
 function buildInitialState(selectedMember, appSettings) {
-  const currentYear = new Date().getFullYear();
   const enabledMethod =
     PAYMENT_METHOD_OPTIONS.find((method) => appSettings.paymentMethods?.[method.key])?.label ?? "Efectivo";
-
   return {
     memberId: selectedMember?.id ?? "",
-    month: new Date().getMonth() + 1,
-    year: currentYear,
     amount: "",
     paymentMethod: enabledMethod,
     paymentDate: new Date().toISOString().slice(0, 10),
     notes: "",
   };
+}
+
+function buildPeriodsLabel(plan) {
+  if (!plan || plan.periodsToRegister.length === 0) return "Sin periodo";
+  if (plan.isPartialPayment) return "Abono / Saldo a favor";
+  const first = plan.periodsToRegister[0];
+  const last = plan.periodsToRegister[plan.periodsToRegister.length - 1];
+  if (plan.periodsToRegister.length === 1) {
+    return `${MONTH_NAMES[first.month - 1]} ${first.year}`;
+  }
+  if (first.year === last.year) {
+    return `${MONTH_NAMES[first.month - 1]} – ${MONTH_NAMES[last.month - 1]} ${last.year}`;
+  }
+  return `${MONTH_NAMES[first.month - 1]} ${first.year} – ${MONTH_NAMES[last.month - 1]} ${last.year}`;
 }
 
 export function RegisterPaymentPage({
@@ -28,7 +39,6 @@ export function RegisterPaymentPage({
   canManageClubScopedData,
   isAllClubsView,
 }) {
-  const currentYear = new Date().getFullYear();
   const [form, setForm] = useState(buildInitialState(selectedMember, appSettings));
   const [isSaved, setIsSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -42,9 +52,21 @@ export function RegisterPaymentPage({
   }, [selectedMember, appSettings]);
 
   const selected = useMemo(
-    () => appData.members.find((member) => String(member.id) === String(form.memberId)),
+    () => appData.members.find((member) => String(member.id) === String(form.memberId)) ?? null,
     [appData.members, form.memberId],
   );
+
+  const paymentPlan = useMemo(() => {
+    if (!selected || !Number(form.amount)) return null;
+    return computePaymentPlan({
+      member: selected,
+      allPayments: appData.payments,
+      allCredits: appData.credits ?? [],
+      allCategories: appData.categories,
+      appSettings,
+      newAmount: Number(form.amount),
+    });
+  }, [selected, form.amount, appData.payments, appData.credits, appData.categories, appSettings]);
 
   function updateField(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -54,16 +76,28 @@ export function RegisterPaymentPage({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!paymentPlan && Number(form.amount) > 0 && selected) return;
     setSaving(true);
     setSaveError("");
 
     try {
+      const plan = paymentPlan ?? {
+        monthlyFee: 0,
+        periodsToRegister: [],
+        creditRemainder: 0,
+        isPartialPayment: false,
+        existingCredit: 0,
+      };
+
       await onRegisterPayment({
         memberId: Number(form.memberId),
         memberName: selected?.fullName ?? "Socio",
-        month: Number(form.month),
-        year: Number(form.year),
-        amount: Number(form.amount || 0),
+        totalAmount: Number(form.amount),
+        monthlyFee: plan.monthlyFee,
+        periods: plan.periodsToRegister,
+        creditRemainder: plan.creditRemainder,
+        isPartialPayment: plan.isPartialPayment,
+        existingCredit: plan.existingCredit,
         paymentMethod: form.paymentMethod,
         paymentDate: form.paymentDate,
         notes: form.notes,
@@ -71,11 +105,13 @@ export function RegisterPaymentPage({
 
       setLastReceipt({
         memberName: selected?.fullName ?? "Socio",
-        month: Number(form.month),
-        year: Number(form.year),
-        amount: Number(form.amount || 0),
+        periodsLabel: buildPeriodsLabel(plan),
+        amount: Number(form.amount),
+        creditRemainder: plan.creditRemainder,
         paymentMethod: form.paymentMethod,
         paymentDate: form.paymentDate,
+        month: plan.periodsToRegister[0]?.month ?? new Date().getMonth() + 1,
+        year: plan.periodsToRegister[0]?.year ?? new Date().getFullYear(),
       });
       setIsSaved(true);
       setForm(buildInitialState(null, appSettings));
@@ -86,11 +122,17 @@ export function RegisterPaymentPage({
     }
   }
 
+  const canSubmit = !saving && canManageClubScopedData && form.memberId && Number(form.amount) > 0;
+
   return (
-    <SectionCard title="Registrar pago" subtitle="Formulario simple para registrar cuotas.">
+    <SectionCard
+      title="Registrar pago"
+      subtitle="El sistema distribuye el monto entre los meses pendientes y los siguientes."
+    >
       {isAllClubsView ? (
         <p className="warning-banner">Selecciona un club activo desde el header para registrar pagos.</p>
       ) : null}
+
       <form className="payment-form" onSubmit={handleSubmit}>
         <label>
           Socio / alumno
@@ -101,49 +143,108 @@ export function RegisterPaymentPage({
             disabled={!canManageClubScopedData}
           >
             <option value="">Seleccionar</option>
-            {appData.members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.fullName}
-              </option>
-            ))}
+            {appData.members
+              .filter((m) => m.active !== false)
+              .map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.fullName}
+                </option>
+              ))}
           </select>
         </label>
 
-        <label>
-          Mes
-          <select value={form.month} onChange={(event) => updateField("month", event.target.value)} required>
-            {MONTH_NAMES.map((name, index) => (
-              <option key={index + 1} value={index + 1}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {selected && (
+          <div className="member-account-card full-span">
+            <div className="member-account-stat">
+              <span>Cuota mensual</span>
+              <strong>{paymentPlan ? formatCurrency(paymentPlan.monthlyFee) : "—"}</strong>
+            </div>
+            <div className="member-account-stat">
+              <span>Cuotas pendientes</span>
+              <strong>{paymentPlan?.pendingCount ?? "—"}</strong>
+            </div>
+            <div className="member-account-stat">
+              <span>Total adeudado</span>
+              <strong>
+                {paymentPlan ? (paymentPlan.pendingTotal > 0 ? formatCurrency(paymentPlan.pendingTotal) : "Sin deuda") : "—"}
+              </strong>
+            </div>
+            {(paymentPlan?.existingCredit ?? 0) > 0 && (
+              <div className="member-account-stat is-credit">
+                <span>Saldo a favor</span>
+                <strong>{formatCurrency(paymentPlan.existingCredit)}</strong>
+              </div>
+            )}
+          </div>
+        )}
 
         <label>
-          Ano
-          <input
-            type="number"
-            min="2024"
-            max={currentYear + 10}
-            value={form.year}
-            onChange={(event) => updateField("year", event.target.value)}
-            required
-          />
-        </label>
-
-        <label>
-          Monto
+          Monto recibido
           <input
             type="number"
             min="0"
             step="1"
-            placeholder="Ej. 1800"
+            placeholder="Ej. 3000"
             value={form.amount}
             onChange={(event) => updateField("amount", event.target.value)}
             required
           />
         </label>
+
+        {selected && Number(form.amount) > 0 && paymentPlan && (
+          <div className="payment-plan-card full-span">
+            {paymentPlan.isPartialPayment ? (
+              <div className="payment-plan-partial">
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 14 14" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 1.5L13 12H1L7 1.5z" /><path d="M7 6v2.5" /><circle cx="7" cy="10.2" r="0.6" fill="currentColor" stroke="none" />
+                  </svg>
+                </span>
+                <div>
+                  <strong>Abono parcial — se guarda como saldo a favor</strong>
+                  <p>
+                    El monto ({formatCurrency(Number(form.amount))}) no cubre una cuota completa ({formatCurrency(paymentPlan.monthlyFee)}).
+                    Quedará acumulado y se aplicará automáticamente en el próximo pago.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="payment-plan-header">
+                  <span>
+                    Se cubrirán{" "}
+                    <strong>{paymentPlan.monthsCovered} {paymentPlan.monthsCovered === 1 ? "mes" : "meses"}</strong>
+                    {paymentPlan.existingCredit > 0 && (
+                      <span className="payment-plan-credit-used">
+                        {" "}(incluye {formatCurrency(paymentPlan.existingCredit)} de saldo previo)
+                      </span>
+                    )}
+                  </span>
+                  {paymentPlan.creditRemainder > 0 && (
+                    <span className="payment-plan-credit">
+                      Saldo a favor: {formatCurrency(paymentPlan.creditRemainder)}
+                    </span>
+                  )}
+                </div>
+                <div className="payment-plan-list">
+                  {paymentPlan.periodsToRegister.map((period, i) => {
+                    const isPending = i < paymentPlan.pendingCount;
+                    return (
+                      <div
+                        key={`${period.month}-${period.year}`}
+                        className={`payment-plan-row ${isPending ? "is-pending" : "is-future"}`}
+                      >
+                        <span>{MONTH_NAMES[period.month - 1]} {period.year}</span>
+                        <span className="payment-plan-row-tag">{isPending ? "pendiente" : "futuro"}</span>
+                        <span className="payment-plan-row-amount">{formatCurrency(paymentPlan.monthlyFee)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <label>
           Forma de pago
@@ -171,7 +272,7 @@ export function RegisterPaymentPage({
         <label className="full-span">
           Observaciones
           <textarea
-            rows="4"
+            rows="3"
             value={form.notes}
             onChange={(event) => updateField("notes", event.target.value)}
             placeholder="Notas sobre el pago..."
@@ -179,21 +280,29 @@ export function RegisterPaymentPage({
         </label>
 
         <div className="full-span form-footer">
-          {selected ? <p className="helper-text">Categoria actual: {selected.categoryName}</p> : <span />}
+          {selected ? (
+            <p className="helper-text">Categoria: {selected.categoryName}</p>
+          ) : (
+            <span />
+          )}
           <div className="toolbar">
             {lastReceipt ? (
-              <button className="secondary-button" type="button" onClick={() => downloadPaymentReceipt(lastReceipt, appSettings)}>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => downloadPaymentReceipt(lastReceipt, appSettings)}
+              >
                 Descargar recibo
               </button>
             ) : null}
-            <button className="primary-button" type="submit" disabled={!canManageClubScopedData || saving}>
+            <button className="primary-button" type="submit" disabled={!canSubmit}>
               {saving ? "Guardando..." : "Guardar pago"}
             </button>
           </div>
         </div>
 
-        {isSaved ? <p className="success-banner">Pago guardado correctamente.</p> : null}
-        {saveError ? <p className="error-banner">{saveError}</p> : null}
+        {isSaved ? <p className="success-banner full-span">Pago guardado correctamente.</p> : null}
+        {saveError ? <p className="error-banner full-span">{saveError}</p> : null}
       </form>
     </SectionCard>
   );

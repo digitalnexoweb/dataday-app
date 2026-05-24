@@ -2056,6 +2056,156 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ═══════════════════════════════════════════════════════
+   PAYMENT PLAN PREVIEW
+═══════════════════════════════════════════════════════ */
+.member-account-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.member-account-stat {
+  display: grid;
+  gap: 4px;
+}
+
+.member-account-stat > span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.member-account-stat > strong {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.member-account-stat.is-credit > strong {
+  color: var(--good);
+}
+
+.payment-plan-card {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.payment-plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+  color: var(--text-dim);
+}
+
+.payment-plan-header strong {
+  color: var(--text);
+}
+
+.payment-plan-credit-used {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.payment-plan-credit {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82rem;
+  color: var(--good);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.payment-plan-list {
+  display: grid;
+}
+
+.payment-plan-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+
+.payment-plan-row:last-child {
+  border-bottom: none;
+}
+
+.payment-plan-row > span:first-child {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.payment-plan-row-tag {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+}
+
+.payment-plan-row.is-pending .payment-plan-row-tag {
+  background: var(--bad-dim);
+  color: var(--bad);
+}
+
+.payment-plan-row.is-future .payment-plan-row-tag {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.payment-plan-row-amount {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.payment-plan-partial {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  background: var(--warn-dim);
+  border-color: rgba(255, 184, 74, 0.24);
+  color: var(--warn);
+}
+
+.payment-plan-partial > span:first-child {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.payment-plan-partial strong {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.payment-plan-partial p {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* ═══════════════════════════════════════════════════════
    PAYMENTS & HISTORY
 ═══════════════════════════════════════════════════════ */
 .payment-form {

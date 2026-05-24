@@ -13,7 +13,8 @@ export function downloadPaymentReceipt(payment, appSettings = null) {
   const clubAddress = appSettings?.clubAddress?.trim() || "";
   const clubPhone = appSettings?.clubPhone?.trim() || "";
   const receiptNumber = payment.id ? String(payment.id).padStart(6, "0") : "------";
-  const monthLabel = `${MONTH_NAMES[payment.month - 1]} ${payment.year}`;
+  const monthLabel = payment.periodsLabel
+    ?? (payment.month ? `${MONTH_NAMES[payment.month - 1]} ${payment.year}` : "Sin periodo");
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;

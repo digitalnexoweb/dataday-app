@@ -51,6 +51,7 @@ export default function App() {
     categories: [],
     payments: [],
     medicalRecords: [],
+    credits: [],
     loading: true,
     error: "",
   });
