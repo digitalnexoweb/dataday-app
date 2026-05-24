@@ -295,6 +295,22 @@ export default function App() {
     );
   }
 
+  async function handleEditPayment(paymentId, payload) {
+    if (supabaseEnabled && !effectiveClubId) {
+      throw new Error("Selecciona un club antes de editar pagos.");
+    }
+    const result = await dataApi.editPaymentAndRefresh(paymentId, payload, appData, effectiveClubId);
+    setAppData((current) => ({ ...current, ...result }));
+  }
+
+  async function handleDeletePayment(paymentId) {
+    if (supabaseEnabled && !effectiveClubId) {
+      throw new Error("Selecciona un club antes de eliminar pagos.");
+    }
+    const result = await dataApi.deletePaymentAndRefresh(paymentId, appData, effectiveClubId);
+    setAppData((current) => ({ ...current, ...result }));
+  }
+
   async function handleToggleMemberActive(memberId, active) {
     if (supabaseEnabled && !effectiveClubId) {
       throw new Error("Selecciona un club antes de modificar socios.");
@@ -343,6 +359,8 @@ export default function App() {
     appData,
     onNavigate: setView,
     onRegisterPayment: handleRegisterPayment,
+    onEditPayment: handleEditPayment,
+    onDeletePayment: handleDeletePayment,
     onSaveMember: handleSaveMember,
     onSaveCategory: handleSaveCategory,
     onSaveMedicalRecord: handleSaveMedicalRecord,

@@ -11,6 +11,8 @@ export function MemberDetailPage({
   isAllClubsView,
   onSaveMedicalRecord,
   onToggleMemberActive,
+  onEditPayment,
+  onDeletePayment,
 }) {
   const dataIndexes = useMemo(
     () => buildDataIndexes(appData.payments, appData.categories, appData.medicalRecords, appData.credits ?? []),
@@ -56,6 +58,8 @@ export function MemberDetailPage({
         onRegisterPayment={() => member && onNavigate({ section: "register-payment", memberId: member.id })}
         onSaveMedicalRecord={onSaveMedicalRecord}
         onToggleMemberActive={onToggleMemberActive}
+        onEditPayment={onEditPayment}
+        onDeletePayment={onDeletePayment}
       />
     </div>
   );

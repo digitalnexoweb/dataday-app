@@ -83,6 +83,7 @@ export function buildMemberSummary(member, indexes, appSettings) {
     monthlyFeeLabel: monthlyFee > 0 ? fmt.format(monthlyFee) : "Sin definir",
     pendingDebt,
     pendingDebtLabel: pendingDebt > 0 ? fmt.format(pendingDebt) : "Sin deuda",
+    pendingPeriods: netOverduePeriods,
     pendingMonths: netOverduePeriods.map(({ month, year }) => `${MONTH_NAMES[month - 1]} ${year}`),
     creditBalance: existingCredit,
     creditBalanceLabel: existingCredit > 0 ? fmt.format(existingCredit) : null,

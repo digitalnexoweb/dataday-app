@@ -34,7 +34,12 @@ export function MemberCard({ member, onOpen, onRegisterPayment, canRegisterPayme
           <h3 className="member-card-name">{member.fullName}</h3>
           <p className="member-card-category">{member.categoryName}</p>
         </div>
-        <StatusBadge status={member.accountStatus} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <StatusBadge status={member.accountStatus} />
+          {(member.creditBalance ?? 0) > 0 ? (
+            <span className="member-card-credit-chip">{member.creditBalanceLabel} a favor</span>
+          ) : null}
+        </div>
       </div>
 
       <div className="member-finance-grid">

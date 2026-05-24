@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { DataTable } from "./DataTable";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { PAYMENT_METHOD_OPTIONS } from "../lib/appSettings";
 import { StatusBadge } from "./StatusBadge";
 import { Tabs } from "./Tabs";
 import { formatCurrency, formatDate, MONTH_NAMES } from "../lib/format";
@@ -32,6 +32,103 @@ function buildMedicalForm(record) {
   };
 }
 
+function EditPaymentModal({ payment, appSettings, onSave, onClose }) {
+  const [form, setForm] = useState({
+    amount: String(payment.amount ?? ""),
+    paymentMethod: payment.paymentMethod ?? "",
+    paymentDate: payment.paymentDate ?? "",
+    notes: payment.notes ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const enabledMethods = PAYMENT_METHOD_OPTIONS.filter((m) => appSettings?.paymentMethods?.[m.key]);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(payment.id, {
+        amount: Number(form.amount),
+        paymentMethod: form.paymentMethod,
+        paymentDate: form.paymentDate,
+        notes: form.notes,
+      });
+      onClose();
+    } catch (err) {
+      setError(err.message || "No se pudo guardar el cambio.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="payment-modal-overlay"
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    >
+      <div className="payment-modal">
+        <div className="payment-modal-header">
+          <h4>Editar pago — {MONTH_NAMES[(payment.month ?? 1) - 1]} {payment.year}</h4>
+          <button className="secondary-button" type="button" onClick={onClose} aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+        <form className="payment-modal-form" onSubmit={handleSubmit}>
+          <label>
+            Monto
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={form.amount}
+              onChange={(event) => setForm((f) => ({ ...f, amount: event.target.value }))}
+              required
+            />
+          </label>
+          <label>
+            Forma de pago
+            <select
+              value={form.paymentMethod}
+              onChange={(event) => setForm((f) => ({ ...f, paymentMethod: event.target.value }))}
+            >
+              {enabledMethods.map((m) => (
+                <option key={m.key}>{m.label}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Fecha de pago
+            <input
+              type="date"
+              value={form.paymentDate}
+              onChange={(event) => setForm((f) => ({ ...f, paymentDate: event.target.value }))}
+              required
+            />
+          </label>
+          <label>
+            Notas
+            <textarea
+              rows="2"
+              value={form.notes}
+              onChange={(event) => setForm((f) => ({ ...f, notes: event.target.value }))}
+            />
+          </label>
+          {error ? <p className="error-banner">{error}</p> : null}
+          <div className="payment-modal-footer">
+            <button className="secondary-button" type="button" onClick={onClose}>
+              Cancelar
+            </button>
+            <button className="primary-button" type="submit" disabled={saving}>
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function MemberDetailPanel({
   member,
   appSettings = null,
@@ -41,6 +138,8 @@ export function MemberDetailPanel({
   onRegisterPayment,
   onSaveMedicalRecord,
   onToggleMemberActive,
+  onEditPayment,
+  onDeletePayment,
   topSlot = null,
 }) {
   const [activeTab, setActiveTab] = useState("summary");
@@ -48,6 +147,10 @@ export function MemberDetailPanel({
   const [medicalForm, setMedicalForm] = useState(buildMedicalForm(member?.medicalRecord));
   const [medicalStatus, setMedicalStatus] = useState({ type: "idle", message: "" });
   const [toggling, setToggling] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
+  const [deletingPaymentId, setDeletingPaymentId] = useState(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const paymentRows = useMemo(() => member?.payments ?? [], [member]);
 
@@ -56,6 +159,9 @@ export function MemberDetailPanel({
     setIsEditingMedical(false);
     setMedicalForm(buildMedicalForm(member?.medicalRecord));
     setMedicalStatus({ type: "idle", message: "" });
+    setEditingPayment(null);
+    setDeletingPaymentId(null);
+    setDeleteError("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [member?.id]); // intentionally only reset when member changes, not on every medicalRecord update
 
@@ -78,6 +184,19 @@ export function MemberDetailPanel({
     }
   }
 
+  async function handleDeletePayment(paymentId) {
+    setDeleteSaving(true);
+    setDeleteError("");
+    try {
+      await onDeletePayment(paymentId);
+      setDeletingPaymentId(null);
+    } catch (error) {
+      setDeleteError(error.message || "No se pudo eliminar el pago.");
+    } finally {
+      setDeleteSaving(false);
+    }
+  }
+
   const clubName = appSettings?.clubName?.trim() || "DataDay Cuotas";
   const whatsappUrl = member.phone
     ? `https://wa.me/${member.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
@@ -95,7 +214,6 @@ export function MemberDetailPanel({
 
   async function handleMedicalSubmit(event) {
     event.preventDefault();
-
     try {
       await onSaveMedicalRecord({
         memberId: member.id,
@@ -209,26 +327,43 @@ export function MemberDetailPanel({
 
       {activeTab === "summary" ? (
         <div className="crm-tab-panel">
+          {(member.creditBalance ?? 0) > 0 ? (
+            <div className="crm-summary-credit-note">
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="7" cy="7" r="5.5" /><path d="M5 7l1.5 1.5L9.5 5.5" />
+              </svg>
+              <span>Saldo a favor:</span>
+              <strong>{member.creditBalanceLabel}</strong>
+            </div>
+          ) : null}
           <div className="crm-summary-grid">
             <div className="crm-summary-card">
-              <span>Estado</span>
-              <strong>{member.pendingDebt > 0 ? "Con deuda" : "Cuenta al dia"}</strong>
-              <p>{member.pendingDebt > 0 ? `${member.pendingMonths.length} meses pendientes.` : "Sin cuotas vencidas."}</p>
+              <span>Estado de cuenta</span>
+              <strong>{member.pendingDebt > 0 ? "Con deuda" : "Al dia"}</strong>
+              <p>
+                {member.pendingMonths.length > 0
+                  ? `${member.pendingMonths.length} ${member.pendingMonths.length === 1 ? "cuota pendiente" : "cuotas pendientes"}.`
+                  : "Sin cuotas vencidas."}
+              </p>
             </div>
             <div className="crm-summary-card">
-              <span>Ultimo pago registrado</span>
+              <span>Ultimo pago</span>
               <strong>{member.lastPaymentLabel}</strong>
-              <p>{paymentRows.length ? `${paymentRows.length} pagos historicos cargados.` : "Aun no hay pagos registrados."}</p>
+              <p>
+                {paymentRows.length
+                  ? `${paymentRows.length} ${paymentRows.length === 1 ? "pago registrado" : "pagos registrados"}.`
+                  : "Aun no hay pagos registrados."}
+              </p>
             </div>
             <div className="crm-summary-card">
               <span>Proximo vencimiento</span>
               <strong>{member.nextDueLabel}</strong>
-              <p>{member.accountStatus === "current" ? "Cuenta cubierta para el periodo actual." : "Requiere seguimiento comercial."}</p>
+              <p>{member.accountStatus === "current" ? "Cubierto para el periodo actual." : "Requiere seguimiento."}</p>
             </div>
             <div className="crm-summary-card">
-              <span>Canal de contacto</span>
-              <strong>{member.phone || member.email || "Sin contacto cargado"}</strong>
-              <p>Telefono y email visibles para seguimiento rapido.</p>
+              <span>Cuota mensual</span>
+              <strong>{member.monthlyFeeLabel}</strong>
+              <p>{member.categoryName}</p>
             </div>
           </div>
         </div>
@@ -236,35 +371,131 @@ export function MemberDetailPanel({
 
       {activeTab === "payments" ? (
         <div className="crm-tab-panel">
-          <DataTable
-            columns={[
-              { key: "month", label: "Mes", render: (row) => MONTH_NAMES[row.month - 1] },
-              { key: "year", label: "Ano" },
-              { key: "amount", label: "Monto", render: (row) => formatCurrency(row.amount) },
-              { key: "paymentMethod", label: "Metodo" },
-              { key: "paymentDate", label: "Fecha", render: (row) => formatOptionalDate(row.paymentDate) },
-            ]}
-            rows={paymentRows}
-          />
+          {paymentRows.length === 0 ? (
+            <p className="auth-helper-text">Sin pagos registrados para este socio.</p>
+          ) : (
+            <>
+              <table className="crm-payments-table">
+                <thead>
+                  <tr>
+                    <th>Mes</th>
+                    <th>Año</th>
+                    <th>Monto</th>
+                    <th>Metodo</th>
+                    <th>Fecha</th>
+                    {canManageClubScopedData ? <th /> : null}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentRows.map((row) => (
+                    <Fragment key={row.id}>
+                      <tr>
+                        <td>{MONTH_NAMES[(row.month ?? 1) - 1]}</td>
+                        <td>{row.year}</td>
+                        <td>{formatCurrency(row.amount)}</td>
+                        <td>{row.paymentMethod ?? "—"}</td>
+                        <td>{formatOptionalDate(row.paymentDate)}</td>
+                        {canManageClubScopedData ? (
+                          <td>
+                            <div className="td-actions">
+                              <button
+                                className="payment-action-btn"
+                                type="button"
+                                title="Editar pago"
+                                onClick={() => setEditingPayment(row)}
+                              >
+                                <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M9.5 2.5l2 2L4.5 11.5l-3 .5.5-3L9.5 2.5z" />
+                                </svg>
+                              </button>
+                              <button
+                                className="payment-action-btn is-danger"
+                                type="button"
+                                title="Eliminar pago"
+                                onClick={() => setDeletingPaymentId(deletingPaymentId === row.id ? null : row.id)}
+                              >
+                                <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M2 4h10M5 4V2.5h4V4M5.5 6v4M8.5 6v4M3 4l1 7.5h6L11 4" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        ) : null}
+                      </tr>
+                      {deletingPaymentId === row.id ? (
+                        <tr className="crm-delete-confirm-row">
+                          <td colSpan={canManageClubScopedData ? 6 : 5}>
+                            <div className="crm-delete-confirm-inner">
+                              <p>
+                                Eliminar el pago de {MONTH_NAMES[(row.month ?? 1) - 1]} {row.year}? Esta accion no se puede deshacer.
+                              </p>
+                              <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => setDeletingPaymentId(null)}
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                className="primary-button"
+                                type="button"
+                                style={{ background: "var(--bad)", borderColor: "var(--bad)" }}
+                                onClick={() => handleDeletePayment(row.id)}
+                                disabled={deleteSaving}
+                              >
+                                {deleteSaving ? "Eliminando..." : "Confirmar"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+              {deleteError ? <p className="error-banner" style={{ marginTop: 8 }}>{deleteError}</p> : null}
+            </>
+          )}
         </div>
       ) : null}
 
       {activeTab === "debt" ? (
         <div className="crm-tab-panel">
-          <div className="crm-debt-overview">
-            <div className="crm-debt-card">
-              <span>Meses pendientes</span>
-              <strong>{member.pendingMonths.length}</strong>
-              <p>{member.pendingMonths.length ? member.pendingMonths.join(", ") : "Sin deuda pendiente."}</p>
+          {member.pendingMonths.length === 0 ? (
+            <div className="crm-debt-empty">
+              <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M8 12l2.5 2.5L16 9.5" />
+              </svg>
+              <strong>Sin deuda pendiente</strong>
+              <p>Este socio esta al dia con sus cuotas.</p>
+              {(member.creditBalance ?? 0) > 0 ? (
+                <p className="crm-credit-coverage-note" style={{ borderRadius: 6 }}>
+                  Saldo a favor disponible: {member.creditBalanceLabel}
+                </p>
+              ) : null}
             </div>
-            <div className="crm-debt-card">
-              <span>Monto total</span>
-              <strong className={member.pendingDebt > 0 ? "is-danger" : "is-success"}>
-                {member.pendingDebt > 0 ? member.pendingDebtLabel : "Sin deuda"}
-              </strong>
-              <p>Incluye recargo configurado para mora cuando aplica.</p>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="crm-debt-list">
+                {(member.pendingPeriods ?? []).map((period) => (
+                  <div key={`${period.month}-${period.year}`} className="crm-debt-row">
+                    <span className="crm-debt-row-label">{MONTH_NAMES[period.month - 1]} {period.year}</span>
+                    <span className="crm-debt-row-amount">{formatCurrency(member.monthlyFee)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="crm-debt-total-row">
+                <span>Total adeudado</span>
+                <strong>{member.pendingDebtLabel}</strong>
+              </div>
+              {(member.creditBalance ?? 0) > 0 ? (
+                <p className="crm-credit-coverage-note">
+                  Este socio tiene {member.creditBalanceLabel} de saldo a favor que se aplicara automaticamente en el proximo pago.
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
       ) : null}
 
@@ -445,6 +676,15 @@ export function MemberDetailPanel({
             </form>
           ) : null}
         </div>
+      ) : null}
+
+      {editingPayment ? (
+        <EditPaymentModal
+          payment={editingPayment}
+          appSettings={appSettings}
+          onSave={onEditPayment}
+          onClose={() => setEditingPayment(null)}
+        />
       ) : null}
     </section>
   );

@@ -1858,7 +1858,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .crm-detail-kpis {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border-bottom: 1px solid var(--line);
 }
 
@@ -1869,6 +1869,318 @@ h1, h2, h3, h4, h5, h6 {
 
 .crm-detail-kpis > *:last-child {
   border-right: none;
+}
+
+.crm-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.crm-kpi-card span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.crm-kpi-card strong {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.crm-kpi-card strong.is-danger { color: var(--bad); }
+.crm-kpi-card strong.is-success { color: var(--good); }
+
+/* Summary tab */
+.crm-summary-credit-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: var(--good-dim);
+  border-radius: 6px;
+  color: var(--good);
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+}
+
+.crm-summary-credit-note strong {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+}
+
+.crm-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.crm-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.crm-summary-card > span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.crm-summary-card > strong {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.crm-summary-card > p {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* Debt tab */
+.crm-debt-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--good);
+}
+
+.crm-debt-empty strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.crm-debt-empty > p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.crm-debt-list {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.crm-debt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-debt-row:last-child {
+  border-bottom: none;
+}
+
+.crm-debt-row-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.crm-debt-row-amount {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--bad);
+}
+
+.crm-debt-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bad-dim);
+  border-radius: 6px;
+}
+
+.crm-debt-total-row > span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bad);
+}
+
+.crm-debt-total-row > strong {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--bad);
+}
+
+.crm-credit-coverage-note {
+  margin-top: 10px;
+  padding: 9px 14px;
+  background: var(--good-dim);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--good);
+}
+
+/* Payments table with edit/delete */
+.crm-payments-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.crm-payments-table th {
+  text-align: left;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-payments-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
+.crm-payments-table tr:last-child td {
+  border-bottom: none;
+}
+
+.td-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.payment-action-btn {
+  background: none;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  color: var(--text-faint);
+  padding: 4px 5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.payment-action-btn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.payment-action-btn.is-danger:hover:not(:disabled) {
+  background: var(--bad-dim);
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+.crm-delete-confirm-row td {
+  padding: 0;
+}
+
+.crm-delete-confirm-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bad-dim);
+}
+
+.crm-delete-confirm-inner > p {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--bad);
+  font-family: var(--font-sans, sans-serif);
+}
+
+/* Payment edit modal */
+.payment-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.payment-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 0;
+}
+
+.payment-modal-header h4 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.payment-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 20px 20px;
+}
+
+.payment-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* Member card credit chip */
+.member-card-credit-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--good-dim);
+  color: var(--good);
+  font-size: 0.64rem;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
 }
 
 .crm-personal-item {
@@ -2918,6 +3230,10 @@ textarea {
 
   .crm-detail-kpis {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .crm-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .crm-personal-grid {

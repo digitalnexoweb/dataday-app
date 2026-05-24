@@ -491,6 +491,51 @@ export const dataApi = {
     return { payments, members, credits };
   },
 
+  async editPayment(paymentId, payload, currentPayments, clubId = null) {
+    if (supabaseEnabled && clubId) {
+      const { error } = await supabase
+        .from("pagos")
+        .update({
+          amount: Number(payload.amount),
+          payment_method: payload.paymentMethod,
+          payment_date: payload.paymentDate,
+          notes: payload.notes ?? "",
+        })
+        .eq("id", paymentId)
+        .eq("club_id", clubId);
+      if (error) throw error;
+    }
+    return currentPayments.map((p) =>
+      String(p.id) === String(paymentId)
+        ? { ...p, amount: Number(payload.amount), paymentMethod: payload.paymentMethod, paymentDate: payload.paymentDate, notes: payload.notes ?? "" }
+        : p,
+    );
+  },
+
+  async editPaymentAndRefresh(paymentId, payload, currentData, clubId = null) {
+    const payments = await this.editPayment(paymentId, payload, currentData.payments, clubId);
+    const members = sortMembersByName(hydrateMembers([...currentData.members], payments));
+    return { payments, members };
+  },
+
+  async deletePayment(paymentId, currentPayments, clubId = null) {
+    if (supabaseEnabled && clubId) {
+      const { error } = await supabase
+        .from("pagos")
+        .delete()
+        .eq("id", paymentId)
+        .eq("club_id", clubId);
+      if (error) throw error;
+    }
+    return currentPayments.filter((p) => String(p.id) !== String(paymentId));
+  },
+
+  async deletePaymentAndRefresh(paymentId, currentData, clubId = null) {
+    const payments = await this.deletePayment(paymentId, currentData.payments, clubId);
+    const members = sortMembersByName(hydrateMembers([...currentData.members], payments));
+    return { payments, members };
+  },
+
   async saveCategory(payload, currentCategories, clubId = null) {
     const normalizedName = payload.name.trim();
     const alreadyExists = currentCategories.some(
