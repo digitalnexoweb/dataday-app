@@ -89,6 +89,16 @@ create table if not exists public.medical_records (
   unique (member_id)
 );
 
+create table if not exists public.saldo_a_favor (
+  id           bigint generated always as identity primary key,
+  member_id    bigint not null references public.socios(id) on delete cascade,
+  club_id      bigint not null references public.clubs(id) on delete cascade,
+  amount       numeric(10, 2) not null check (amount > 0),
+  payment_date date not null default current_date,
+  notes        text not null default '',
+  created_at   timestamptz not null default now()
+);
+
 alter table public.access_requests
   add column if not exists full_name text,
   add column if not exists email text,
@@ -226,6 +236,8 @@ create index if not exists idx_categorias_club_id on public.categorias(club_id);
 create unique index if not exists idx_categorias_club_name on public.categorias(club_id, name);
 create index if not exists idx_medical_records_member_id on public.medical_records(member_id);
 create index if not exists idx_medical_records_club_id on public.medical_records(club_id);
+create index if not exists idx_saldo_a_favor_member_id on public.saldo_a_favor(member_id);
+create index if not exists idx_saldo_a_favor_club_id   on public.saldo_a_favor(club_id);
 
 create or replace function public.set_medical_record_updated_at()
 returns trigger
@@ -352,6 +364,7 @@ alter table public.categorias enable row level security;
 alter table public.socios enable row level security;
 alter table public.pagos enable row level security;
 alter table public.medical_records enable row level security;
+alter table public.saldo_a_favor enable row level security;
 
 drop policy if exists "Public can create access requests" on public.access_requests;
 create policy "Public can create access requests"
@@ -452,10 +465,20 @@ to authenticated
 using (club_id = public.current_club_id() or public.is_superadmin())
 with check (club_id = public.current_club_id() or public.is_superadmin());
 
+drop policy if exists "Club staff can manage their credits" on public.saldo_a_favor;
+drop policy if exists "Club scoped saldo_a_favor" on public.saldo_a_favor;
+create policy "Club scoped saldo_a_favor"
+on public.saldo_a_favor
+for all
+to authenticated
+using (club_id = public.current_club_id() or public.is_superadmin())
+with check (club_id = public.current_club_id() or public.is_superadmin());
+
 -- ============================================================
--- Migration: saldo_a_favor column + atomic payment RPC
--- Run this block in Supabase SQL Editor before deploying the
--- corresponding frontend changes.
+-- Migration: columna socios.saldo_a_favor + RPC atomico
+-- Idempotente: seguro de re-ejecutar en bases existentes.
+-- La tabla saldo_a_favor, sus indices, RLS y politicas ya
+-- estan definidos arriba en el schema principal.
 -- ============================================================
 
 -- 1. Columna de saldo en socios (fuente de verdad para el RPC)
@@ -474,18 +497,7 @@ where exists (
   select 1 from public.saldo_a_favor sf where sf.member_id = s.id
 );
 
--- 3. RLS para la tabla saldo_a_favor (si aún no existe)
-alter table if exists public.saldo_a_favor enable row level security;
-
-drop policy if exists "Club scoped saldo_a_favor" on public.saldo_a_favor;
-create policy "Club scoped saldo_a_favor"
-on public.saldo_a_favor
-for all
-to authenticated
-using (club_id = public.current_club_id() or public.is_superadmin())
-with check (club_id = public.current_club_id() or public.is_superadmin());
-
--- 4. Funcion RPC de registro atomico de pagos
+-- 3. Funcion RPC de registro atomico de pagos
 create or replace function public.registrar_pago_con_credito(
   p_member_id      bigint,
   p_amount         numeric,
@@ -638,8 +650,9 @@ begin
     end loop;
   end if;
 
-  -- Nuevo saldo: 0 en pago parcial (el saldo previo queda intacto); sobrante en pago completo
-  v_new_saldo := case when v_is_partial then v_saldo else round(v_remaining * 100) / 100 end;
+  -- Nuevo saldo: en pago parcial v_remaining ya es 0 (consumido) y v_saldo fue sumado al inicio,
+  -- por lo que el saldo previo queda consumido. En pago completo el sobrante es el nuevo saldo.
+  v_new_saldo := case when v_is_partial then 0 else round(v_remaining * 100) / 100 end;
 
   -- Actualizar columna en socios
   update public.socios set saldo_a_favor = v_new_saldo where id = p_member_id;
