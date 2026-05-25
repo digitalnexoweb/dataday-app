@@ -1986,8 +1986,9 @@ h1, h2, h3, h4, h5, h6 {
 
 .crm-debt-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
   padding: 9px 16px;
   border-bottom: 1px solid var(--line);
 }
@@ -2000,6 +2001,17 @@ h1, h2, h3, h4, h5, h6 {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.82rem;
   color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.crm-debt-partial-note {
+  font-family: inherit;
+  font-size: 0.7rem;
+  color: var(--warn, #f59e0b);
+  font-weight: 400;
 }
 
 .crm-debt-row-amount {
