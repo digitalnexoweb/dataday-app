@@ -451,3 +451,215 @@ for all
 to authenticated
 using (club_id = public.current_club_id() or public.is_superadmin())
 with check (club_id = public.current_club_id() or public.is_superadmin());
+
+-- ============================================================
+-- Migration: saldo_a_favor column + atomic payment RPC
+-- Run this block in Supabase SQL Editor before deploying the
+-- corresponding frontend changes.
+-- ============================================================
+
+-- 1. Columna de saldo en socios (fuente de verdad para el RPC)
+alter table public.socios
+  add column if not exists saldo_a_favor numeric(10,2) not null default 0
+  check (saldo_a_favor >= 0);
+
+-- 2. Migrar datos existentes de la tabla saldo_a_favor al nuevo campo
+update public.socios s
+set saldo_a_favor = coalesce((
+  select sum(sf.amount)
+  from public.saldo_a_favor sf
+  where sf.member_id = s.id
+), 0)
+where exists (
+  select 1 from public.saldo_a_favor sf where sf.member_id = s.id
+);
+
+-- 3. RLS para la tabla saldo_a_favor (si aún no existe)
+alter table if exists public.saldo_a_favor enable row level security;
+
+drop policy if exists "Club scoped saldo_a_favor" on public.saldo_a_favor;
+create policy "Club scoped saldo_a_favor"
+on public.saldo_a_favor
+for all
+to authenticated
+using (club_id = public.current_club_id() or public.is_superadmin())
+with check (club_id = public.current_club_id() or public.is_superadmin());
+
+-- 4. Funcion RPC de registro atomico de pagos
+create or replace function public.registrar_pago_con_credito(
+  p_member_id      bigint,
+  p_amount         numeric,
+  p_payment_method text,
+  p_payment_date   date,
+  p_club_id        bigint,
+  p_notes          text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_monthly_fee    numeric;
+  v_saldo          numeric;
+  v_remaining      numeric;
+  v_earliest       date;
+  v_period_row     record;
+  v_new_saldo      numeric := 0;
+  v_periods_covered int := 0;
+  v_is_partial     boolean := false;
+  v_partial_m      int;
+  v_partial_y      int;
+  v_fut            date;
+  v_fut_m          int;
+  v_fut_y          int;
+  v_needed         numeric;
+begin
+  -- Verificacion de autorización
+  if not (public.current_club_id() = p_club_id or public.is_superadmin()) then
+    raise exception 'No autorizado para el club %', p_club_id;
+  end if;
+
+  -- Datos del socio: cuota mensual, saldo actual, fecha mas antigua cobrable
+  select
+    coalesce(cat.monthly_fee, 0),
+    coalesce(s.saldo_a_favor, 0),
+    greatest(s.enrollment_date, (current_date - interval '3 years')::date)
+  into v_monthly_fee, v_saldo, v_earliest
+  from public.socios s
+  left join public.categorias cat on cat.id = s.category_id
+  where s.id = p_member_id;
+
+  if not found then
+    raise exception 'Socio % no encontrado', p_member_id;
+  end if;
+
+  v_remaining := p_amount + v_saldo;
+
+  -- Socio sin cuota: registrar en el mes actual y salir
+  if v_monthly_fee <= 0 then
+    insert into public.pagos(member_id, club_id, month, year, amount, payment_method, payment_date, notes)
+    values (
+      p_member_id, p_club_id,
+      extract(month from p_payment_date)::int,
+      extract(year from p_payment_date)::int,
+      p_amount, p_payment_method, p_payment_date, p_notes
+    )
+    on conflict (member_id, month, year) do nothing;
+    return jsonb_build_object('months_covered', 1, 'credit_remainder', 0, 'is_partial', false);
+  end if;
+
+  -- Iterar sobre periodos pendientes (mas antiguo primero), incluyendo los parcialmente pagados
+  for v_period_row in
+    select
+      extract(month from d)::int as m,
+      extract(year  from d)::int as y,
+      coalesce((
+        select p2.amount
+        from public.pagos p2
+        where p2.member_id = p_member_id
+          and p2.month = extract(month from d)::int
+          and p2.year  = extract(year  from d)::int
+      ), 0) as already_paid
+    from generate_series(
+      date_trunc('month', v_earliest::timestamptz),
+      date_trunc('month', current_date::timestamptz),
+      interval '1 month'
+    ) d
+    where not exists (
+      select 1 from public.pagos p2
+      where p2.member_id = p_member_id
+        and p2.month  = extract(month from d)::int
+        and p2.year   = extract(year  from d)::int
+        and p2.amount >= v_monthly_fee
+    )
+    order by d
+  loop
+    v_needed := v_monthly_fee - v_period_row.already_paid;
+
+    if v_remaining >= v_needed then
+      -- Cubrir periodo completo
+      v_remaining       := v_remaining - v_needed;
+      v_periods_covered := v_periods_covered + 1;
+
+      insert into public.pagos(member_id, club_id, month, year, amount, payment_method, payment_date, notes)
+      values (p_member_id, p_club_id, v_period_row.m, v_period_row.y,
+              v_monthly_fee, p_payment_method, p_payment_date, p_notes)
+      on conflict (member_id, month, year)
+        do update set
+          amount       = v_monthly_fee,
+          payment_date = excluded.payment_date,
+          notes        = excluded.notes;
+    else
+      -- Pago parcial: acumular lo que queda sobre este periodo
+      if v_remaining > 0 then
+        v_is_partial := true;
+        v_partial_m  := v_period_row.m;
+        v_partial_y  := v_period_row.y;
+
+        insert into public.pagos(member_id, club_id, month, year, amount, payment_method, payment_date, notes)
+        values (p_member_id, p_club_id, v_period_row.m, v_period_row.y,
+                v_period_row.already_paid + v_remaining, p_payment_method, p_payment_date, p_notes)
+        on conflict (member_id, month, year)
+          do update set
+            amount       = excluded.amount,
+            payment_date = excluded.payment_date,
+            notes        = excluded.notes;
+
+        v_remaining := 0;
+      end if;
+      exit;
+    end if;
+  end loop;
+
+  -- Cubrir meses futuros con el sobrante (solo si se cubrieron periodos completos)
+  if v_remaining >= v_monthly_fee then
+    v_fut := date_trunc('month', current_date::timestamptz + interval '1 month');
+    while v_remaining >= v_monthly_fee
+      and v_fut < (current_date::timestamptz + interval '37 months')
+    loop
+      v_fut_m := extract(month from v_fut)::int;
+      v_fut_y := extract(year  from v_fut)::int;
+
+      if not exists (
+        select 1 from public.pagos p2
+        where p2.member_id = p_member_id and p2.month = v_fut_m and p2.year = v_fut_y
+      ) then
+        insert into public.pagos(member_id, club_id, month, year, amount, payment_method, payment_date, notes)
+        values (p_member_id, p_club_id, v_fut_m, v_fut_y,
+                v_monthly_fee, p_payment_method, p_payment_date, p_notes)
+        on conflict (member_id, month, year) do nothing;
+
+        v_remaining       := v_remaining - v_monthly_fee;
+        v_periods_covered := v_periods_covered + 1;
+      end if;
+
+      v_fut := v_fut + interval '1 month';
+    end loop;
+  end if;
+
+  -- Nuevo saldo: 0 en pago parcial (el saldo previo queda intacto); sobrante en pago completo
+  v_new_saldo := case when v_is_partial then v_saldo else round(v_remaining * 100) / 100 end;
+
+  -- Actualizar columna en socios
+  update public.socios set saldo_a_favor = v_new_saldo where id = p_member_id;
+
+  -- Sincronizar tabla saldo_a_favor (para historial y lectura del frontend)
+  delete from public.saldo_a_favor where member_id = p_member_id and club_id = p_club_id;
+  if v_new_saldo > 0 then
+    insert into public.saldo_a_favor(member_id, club_id, amount, payment_date, notes)
+    values (p_member_id, p_club_id, v_new_saldo, p_payment_date,
+            case when v_is_partial then 'Abono parcial' else 'Saldo a favor automatico' end);
+  end if;
+
+  return jsonb_build_object(
+    'months_covered',  v_periods_covered,
+    'credit_remainder', v_new_saldo,
+    'is_partial',      v_is_partial,
+    'partial_month',   v_partial_m,
+    'partial_year',    v_partial_y
+  );
+end;
+$$;
+
+grant execute on function public.registrar_pago_con_credito to authenticated;

@@ -19,7 +19,10 @@ function buildInitialState(selectedMember, appSettings) {
 
 function buildPeriodsLabel(plan) {
   if (!plan || plan.periodsToRegister.length === 0) return "Sin periodo";
-  if (plan.isPartialPayment) return "Abono / Saldo a favor";
+  if (plan.isPartialPayment) {
+    const period = plan.periodsToRegister[0];
+    return period ? `Abono parcial — ${MONTH_NAMES[period.month - 1]} ${period.year}` : "Abono parcial";
+  }
   const first = plan.periodsToRegister[0];
   const last = plan.periodsToRegister[plan.periodsToRegister.length - 1];
   if (plan.periodsToRegister.length === 1) {
@@ -201,10 +204,12 @@ export function RegisterPaymentPage({
                   </svg>
                 </span>
                 <div>
-                  <strong>Abono parcial — se guarda como saldo a favor</strong>
+                  <strong>Abono parcial</strong>
                   <p>
-                    El monto ({formatCurrency(Number(form.amount))}) no cubre una cuota completa ({formatCurrency(paymentPlan.monthlyFee)}).
-                    Quedará acumulado y se aplicará automáticamente en el próximo pago.
+                    El monto ({formatCurrency(Number(form.amount))}) no cubre la cuota completa ({formatCurrency(paymentPlan.monthlyFee)}).
+                    {paymentPlan.periodsToRegister[0]
+                      ? ` Se registrara como abono sobre ${MONTH_NAMES[paymentPlan.periodsToRegister[0].month - 1]} ${paymentPlan.periodsToRegister[0].year}.`
+                      : ""}
                   </p>
                 </div>
               </div>

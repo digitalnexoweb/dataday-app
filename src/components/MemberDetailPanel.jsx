@@ -480,8 +480,17 @@ export function MemberDetailPanel({
               <div className="crm-debt-list">
                 {(member.pendingPeriods ?? []).map((period) => (
                   <div key={`${period.month}-${period.year}`} className="crm-debt-row">
-                    <span className="crm-debt-row-label">{MONTH_NAMES[period.month - 1]} {period.year}</span>
-                    <span className="crm-debt-row-amount">{formatCurrency(member.monthlyFee)}</span>
+                    <div className="crm-debt-row-label">
+                      {MONTH_NAMES[period.month - 1]} {period.year}
+                      {(period.partialAmount ?? 0) > 0 ? (
+                        <span className="crm-debt-partial-note">
+                          Abono parcial {formatCurrency(period.partialAmount)} de {formatCurrency(member.monthlyFee)} — Resta {formatCurrency(period.remainingAmount)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <span className="crm-debt-row-amount">
+                      {formatCurrency(period.remainingAmount ?? member.monthlyFee)}
+                    </span>
                   </div>
                 ))}
               </div>

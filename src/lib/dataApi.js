@@ -422,38 +422,38 @@ export const dataApi = {
   async registerPayment(payload, currentPayments, clubId = null) {
     // payload: { memberId, memberName, totalAmount, monthlyFee, periods[], creditRemainder,
     //            isPartialPayment, existingCredit, paymentMethod, paymentDate, notes }
-    if (supabaseEnabled && clubId) {
-      for (const period of payload.periods) {
-        const { error } = await supabase.from("pagos").insert({
-          member_id: payload.memberId,
-          club_id: clubId,
+    // For the Supabase path, registerPaymentAndRefresh calls the RPC directly.
+    // This method handles only the local mock path.
+
+    if (payload.isPartialPayment) {
+      const period = payload.periods[0];
+      if (!period) return currentPayments;
+      // Accumulate onto an existing partial payment for the same period if present
+      const existingIdx = currentPayments.findIndex(
+        (p) => String(p.memberId) === String(payload.memberId) && p.month === period.month && p.year === period.year,
+      );
+      if (existingIdx >= 0) {
+        const updated = [...currentPayments];
+        updated[existingIdx] = { ...updated[existingIdx], amount: Number(updated[existingIdx].amount) + payload.totalAmount };
+        return updated;
+      }
+      return [
+        {
+          id: Date.now(),
+          memberId: payload.memberId,
+          memberName: payload.memberName,
           month: period.month,
           year: period.year,
-          amount: payload.monthlyFee,
-          payment_method: payload.paymentMethod,
-          payment_date: payload.paymentDate,
+          amount: payload.totalAmount,
+          paymentMethod: payload.paymentMethod,
+          paymentDate: payload.paymentDate,
           notes: payload.notes,
-        });
-        // Ignore unique-constraint violations (period already paid)
-        if (error && error.code !== "23505") throw error;
-      }
-
-      // Replace credit for this member: delete existing, insert remainder if any
-      await supabase.from("saldo_a_favor").delete().eq("member_id", payload.memberId).eq("club_id", clubId);
-      const newCreditAmount = payload.isPartialPayment ? payload.totalAmount : payload.creditRemainder;
-      if (newCreditAmount > 0) {
-        const { error } = await supabase.from("saldo_a_favor").insert({
-          member_id: payload.memberId,
-          club_id: clubId,
-          amount: newCreditAmount,
-          payment_date: payload.paymentDate,
-          notes: payload.isPartialPayment ? (payload.notes || "Abono parcial") : "Saldo a favor automatico",
-        });
-        if (error) throw error;
-      }
+        },
+        ...currentPayments,
+      ];
     }
 
-    // Optimistic local state: one entry per period registered
+    // Full payment: one pagos entry per period at monthlyFee
     const newPayments = payload.periods.map((period, i) => ({
       id: Date.now() + i,
       memberId: payload.memberId,
@@ -470,11 +470,25 @@ export const dataApi = {
   },
 
   async registerPaymentAndRefresh(payload, currentData, clubId = null) {
-    const payments = await this.registerPayment(payload, currentData.payments, clubId);
-    const members = sortMembersByName(hydrateMembers([...currentData.members], payments));
+    if (supabaseEnabled && clubId) {
+      // Atomic RPC: handles pagos inserts, partial accumulation, and saldo_a_favor sync
+      const { error } = await supabase.rpc("registrar_pago_con_credito", {
+        p_member_id: payload.memberId,
+        p_amount: payload.totalAmount,
+        p_payment_method: payload.paymentMethod,
+        p_payment_date: payload.paymentDate,
+        p_club_id: clubId,
+        p_notes: payload.notes || null,
+      });
+      if (error) throw error;
+      // Refresh from server to reflect exact DB state
+      return await getSupabaseData(clubId, false);
+    }
 
-    // Optimistic credit update
-    const newCreditAmount = payload.isPartialPayment ? payload.totalAmount : payload.creditRemainder;
+    // Local mock path: optimistic update
+    const payments = await this.registerPayment(payload, currentData.payments, null);
+    const members = sortMembersByName(hydrateMembers([...currentData.members], payments));
+    const newCreditAmount = payload.isPartialPayment ? 0 : (payload.creditRemainder ?? 0);
     const creditsWithoutMember = (currentData.credits ?? []).filter(
       (c) => String(c.memberId) !== String(payload.memberId),
     );
@@ -484,10 +498,9 @@ export const dataApi = {
           memberId: payload.memberId,
           amount: newCreditAmount,
           paymentDate: payload.paymentDate,
-          notes: payload.isPartialPayment ? (payload.notes || "Abono parcial") : "Saldo a favor automatico",
+          notes: "Saldo a favor automatico",
         }]
       : creditsWithoutMember;
-
     return { payments, members, credits };
   },
 
