@@ -51,6 +51,8 @@ create table if not exists public.socios (
   notes text,
   photo_url text,
   active boolean not null default true,
+  saldo_a_favor numeric(10, 2) not null default 0
+    check (saldo_a_favor >= 0),
   created_at timestamptz not null default now()
 );
 
