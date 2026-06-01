@@ -9,7 +9,7 @@ Aplicacion moderna para gestionar socios, alumnos y cuotas de clubes amateur, ac
 - Supabase (PostgreSQL, Auth, Storage, Edge Functions)
 - Resend para emails transaccionales
 - jsPDF para generacion de recibos
-- Netlify para despliegue
+- Cloudflare Pages para despliegue
 
 ## Correr localmente
 
@@ -43,16 +43,17 @@ Las Edge Functions de Supabase requieren las siguientes variables de entorno con
 | `RESEND_API_KEY` | API key de Resend para envio de emails | Si |
 | `ADMIN_NOTIFICATION_EMAIL` | Email del administrador que recibe notificaciones de nuevas solicitudes | Si |
 | `ADMIN_APPROVAL_SECRET` | Secreto HMAC para firmar y verificar tokens de aprobacion/rechazo por email | Si |
-| `APP_BASE_URL` | URL publica de la app (ej. `https://data-day-app367d.netlify.app`). Usado como CORS origin y redirect de recuperacion de contrasena | Si |
+| `APP_BASE_URL` | URL publica de la app (ej. `https://dataday-app.pages.dev`). Usado como CORS origin y redirect de recuperacion de contrasena | Si |
 | `RESEND_FROM_EMAIL` | Direccion de envio de emails (ej. `DataDay Cuotas <notificaciones@tudominio.com>`). Requiere dominio verificado en Resend | Recomendado |
 
 > **Nota de seguridad**: `SERVICE_ROLE_KEY` tiene permisos de superadmin sobre la base de datos. Solo debe usarse en Edge Functions (Deno/servidor), nunca en codigo del frontend.
 
-## Despliegue en Netlify
+## Despliegue en Cloudflare Pages
 
 - Build command: `npm run build`
 - Publish directory: `dist`
 - Variables de entorno: las tres variables `VITE_*` del frontend
+- El SPA fallback esta cubierto por `public/_redirects`
 
 ## Scripts disponibles
 

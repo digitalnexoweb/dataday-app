@@ -14,7 +14,7 @@ Convertir **DataDay Cuotas** en una app SaaS para gestion de cuotas de clubes, a
 - Supabase Auth
 - Edge Functions de Supabase
 - Resend para emails
-- Netlify en produccion
+- Cloudflare Pages en produccion
 
 ## Estado actual real
 
@@ -40,17 +40,16 @@ Convertir **DataDay Cuotas** en una app SaaS para gestion de cuotas de clubes, a
 - Se pueden registrar pagos y descargar recibo
 - Hay exportacion de historial
 - El dashboard fue redisenado con cards flotantes, acento naranja y calendario de vencimientos
-- La app ya fue publicada en Netlify
-- La URL publica actual es `https://data-day-app367d.netlify.app`
+- La app fue migrada de Netlify a Cloudflare Pages
+- La URL publica actual es `https://dataday-app.pages.dev`
 - La version movil fue mejorada con navegacion inferior y layout mas compacto
 - `npm run build` compila correctamente
 
 ## Deploy actual
 
 - GitHub repo publico: `https://github.com/digitalnexoweb/dataday-app`
-- Netlify site actual: `https://data-day-app367d.netlify.app`
-- El deploy toma la rama `main`
-- Los builds automaticos de Netlify quedaron pausados temporalmente para seguir desarrollando localmente sin redeploy por cada push
+- Cloudflare Pages: `https://dataday-app.pages.dev`
+- El deploy toma la rama `main` automaticamente al hacer push
 
 ## Archivos clave
 
@@ -120,7 +119,7 @@ Archivos principales:
 
 ### 3. Recovery de contrasena
 
-Se rehizo el flujo para Netlify + Supabase Auth:
+Se rehizo el flujo para Cloudflare Pages + Supabase Auth:
 
 - `Olvide mi contrasena` envia el mail a `/reset-password`
 - existe pantalla exclusiva `ResetPasswordPage`
@@ -155,13 +154,13 @@ Secrets configurados o usados:
 - `RESEND_API_KEY`
 - `ADMIN_NOTIFICATION_EMAIL=digitalnexoweb@gmail.com`
 - `ADMIN_APPROVAL_SECRET`
-- `APP_BASE_URL=https://data-day-app367d.netlify.app`
+- `APP_BASE_URL=https://dataday-app.pages.dev`
 
 Importante:
 
 - No usar `service role` en frontend
-- Si cambia la URL de Netlify, actualizar `APP_BASE_URL`
-- En `Authentication -> URL Configuration`, el `Site URL` y redirects deben apuntar al dominio actual de Netlify
+- Si cambia la URL de produccion, actualizar `APP_BASE_URL`
+- En `Authentication -> URL Configuration`, el `Site URL` y redirects deben apuntar al dominio actual de Cloudflare Pages
 
 ## Base de datos
 
@@ -241,10 +240,9 @@ Con ese link el cliente puede:
 
 Mientras se sigue iterando la app:
 
-- Netlify queda conectado al repo pero con `Stopped builds`
 - el flujo recomendado es trabajar localmente con `npm run dev`
 - la app se prueba en `http://localhost:5173`
-- solo cuando convenga se vuelve a activar el deploy automatico o se hace un deploy manual
+- cada push a `main` dispara un deploy automatico en Cloudflare Pages
 
 ## Siguiente paso recomendado
 

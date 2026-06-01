@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPERADMIN_EMAIL = "digitalnexoweb@gmail.com";
-const PRODUCTION_ORIGIN = "https://data-day-app367d.netlify.app";
+const PRODUCTION_ORIGIN = "https://dataday-app.pages.dev";
 const TOKEN_TTL_SECONDS = 72 * 60 * 60;
 
 // C6: Restrict CORS to the configured frontend origin instead of wildcard.
