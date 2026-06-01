@@ -2741,6 +2741,9 @@ textarea {
     box-shadow 140ms ease;
   appearance: none;
   -webkit-appearance: none;
+  /* Tells the browser to render native UI (date picker, select dropdown)
+     in dark mode instead of defaulting to white. */
+  color-scheme: dark;
 }
 
 input::placeholder,
@@ -2753,6 +2756,31 @@ select:focus,
 textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Autofill override — browsers (Chrome/Safari/Edge) inject an internal
+   box-shadow that overrides background-color. The inset shadow repaints it
+   with our token, and the infinite transition delay kills the yellow flash. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--input-bg) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+  transition:
+    background-color 0s 600000s,
+    color 0s 600000s;
+}
+
+/* Switch native UI to light mode when the app theme is light */
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea,
+body.light input,
+body.light select,
+body.light textarea {
+  color-scheme: light;
 }
 
 select {
