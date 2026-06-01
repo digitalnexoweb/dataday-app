@@ -14,7 +14,9 @@ export function DataTable({ columns, rows, emptyMessage = "No hay datos para mos
             rows.map((row, index) => (
               <tr key={row.id ?? index}>
                 {columns.map((column) => (
-                  <td key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>
+                  <td key={column.key} data-label={column.label}>
+                    {column.render ? column.render(row) : row[column.key]}
+                  </td>
                 ))}
               </tr>
             ))

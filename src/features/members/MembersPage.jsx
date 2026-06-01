@@ -189,11 +189,11 @@ export function MembersPage({
                 </div>
               </div>
               <StatusBadge status={member.accountStatus} />
-              <span className="member-list-row-mono">{member.monthlyFeeLabel}</span>
-              <span className={`member-list-row-mono${member.pendingDebt > 0 ? " debt-highlight" : ""}`}>
+              <span className="member-list-row-mono member-list-col-fee">{member.monthlyFeeLabel}</span>
+              <span className={`member-list-row-mono member-list-col-debt${member.pendingDebt > 0 ? " debt-highlight" : ""}`}>
                 {member.pendingDebtLabel}
               </span>
-              <span className="member-list-row-mono">{member.lastPaymentLabel}</span>
+              <span className="member-list-row-mono member-list-col-lastpay">{member.lastPaymentLabel}</span>
               <div className="member-list-row-actions">
                 <button
                   className="secondary-button"

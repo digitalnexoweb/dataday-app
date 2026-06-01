@@ -1,9 +1,11 @@
+import { authApi } from "../lib/authApi";
+
 const MOBILE_NAV_ITEMS = [
-  { id: "dashboard", label: "Inicio" },
-  { id: "members", label: "Socios" },
+  { id: "dashboard",        label: "Inicio" },
+  { id: "members",          label: "Socios" },
   { id: "register-payment", label: "Pagos" },
   { id: "payments-history", label: "Historial" },
-  { id: "settings", label: "Config" },
+  { id: "settings",         label: "Config" },
 ];
 
 function getIcon(itemId) {
@@ -42,9 +44,28 @@ function getIcon(itemId) {
     );
   }
 
+  if (itemId === "admin-requests") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2L14.47 7.02L20 7.82L16 11.72L16.94 17.2L12 14.6L7.06 17.2L8 11.72L4 7.82L9.53 7.02Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  /* settings fallback */
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3.75a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5ZM5.25 10.5a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Zm13.5 0a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5ZM12 15.75a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 4.5H5.5A1.5 1.5 0 0 0 4 6v12a1.5 1.5 0 0 0 1.5 1.5H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M13 8.5 17.5 12 13 15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17.5 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -67,6 +88,16 @@ export function MobileNav({ currentSection, onNavigate, isSuperAdmin }) {
           <span>{item.label}</span>
         </button>
       ))}
+
+      <button
+        type="button"
+        className="mobile-nav-item"
+        onClick={() => authApi.signOut()}
+        aria-label="Cerrar sesion"
+      >
+        <span className="mobile-nav-icon"><LogoutIcon /></span>
+        <span>Salir</span>
+      </button>
     </nav>
   );
 }
