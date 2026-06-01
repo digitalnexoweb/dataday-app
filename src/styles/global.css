@@ -3457,3 +3457,217 @@ textarea {
     width: auto;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE POLISH  (≤768 px)
+   All rules here are additive — zero desktop changes.
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ─── Touch targets ──────────────────────────────── */
+  .primary-button,
+  .secondary-button {
+    min-height: 44px;
+  }
+
+  /* ─── Page headings ──────────────────────────────── */
+  .topbar h1,
+  .members-page-title h2 {
+    font-size: 1.1rem;
+  }
+
+  /* ─── Card padding ───────────────────────────────── */
+  .section-card,
+  .setting-box {
+    padding: 14px;
+  }
+
+  /* ─── SectionCard header: stack title + toolbar ─── */
+  .section-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .section-actions {
+    width: 100%;
+  }
+
+  /* ─── Filters / toolbar ──────────────────────────── */
+  .toolbar,
+  .history-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .history-toolbar .filter-select,
+  .history-toolbar input[type="date"] {
+    width: 100%;
+    min-width: unset;
+  }
+  .history-toolbar .secondary-button {
+    width: 100%;
+  }
+
+  /* ─── Members page toolbar ───────────────────────── */
+  .members-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .members-page-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .members-page-toolbar .primary-button {
+    width: 100%;
+    order: -1;
+  }
+  .search-input {
+    width: 100%;
+    max-width: none;
+    /* remove the expanding animation — already full width */
+    transition: border-color 140ms ease;
+  }
+  .search-input:focus {
+    width: 100%;
+  }
+  .members-page-toolbar .filter-select {
+    width: 100%;
+    min-width: unset;
+  }
+  .members-count-chip {
+    display: none; /* count visible as list length; saves bar space */
+  }
+  .view-toggle {
+    align-self: flex-end;
+  }
+
+  /* ─── Stat cards: 1 column on very small screens ── */
+  .stats-grid,
+  .stats-grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stat-card.is-featured.is-wide {
+    grid-column: span 1;
+  }
+
+  /* ─── Member list → card layout ─────────────────── */
+  .member-list-header {
+    display: none;
+  }
+
+  .member-list-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "identity status"
+      "fee      debt"
+      "actions  actions";
+    gap: 10px 8px;
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 8px;
+    /* existing border + bg already on the element */
+  }
+
+  .member-list-row > .member-list-row-identity  { grid-area: identity; }
+  .member-list-row > .status-badge              { grid-area: status;   align-self: start; }
+  .member-list-row > .member-list-col-fee       { grid-area: fee; }
+  .member-list-row > .member-list-col-debt      { grid-area: debt;     text-align: right; }
+  .member-list-row > .member-list-col-lastpay   { display: none; }
+  .member-list-row > .member-list-row-actions   {
+    grid-area: actions;
+    justify-content: stretch;
+  }
+  .member-list-row > .member-list-row-actions > button {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  /* ─── DataTable → card layout ────────────────────── */
+  .table-wrap {
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .data-table,
+  .data-table tbody,
+  .data-table tr {
+    display: block;
+  }
+
+  .data-table thead {
+    display: none;
+  }
+
+  .data-table tbody tr {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    margin-bottom: 8px;
+  }
+
+  .data-table tbody tr:hover {
+    background: var(--surface-2);
+  }
+
+  .data-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+  }
+
+  .data-table td:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  /* Label injected from data-label attribute */
+  .data-table td::before {
+    content: attr(data-label);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .empty-table-cell {
+    display: block;
+    text-align: center;
+    padding: 24px 0;
+  }
+
+  /* ─── Mobile nav: shrink items for 6th logout slot ─ */
+  .mobile-nav-item {
+    padding: 8px 4px;
+    font-size: 0.58rem;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* ─── Forms: full-width controls ────────────────── */
+  .auth-form .primary-button,
+  .auth-form .secondary-button,
+  .payment-form .primary-button,
+  .payment-form .secondary-button {
+    width: 100%;
+  }
+
+  /* ─── Settings grid already 1-col at 900px — ok ─── */
+
+  /* ─── No horizontal bleed anywhere ──────────────── */
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
