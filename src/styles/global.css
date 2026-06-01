@@ -3292,3 +3292,168 @@ textarea {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   BIOMETRIC LOGIN & REGISTRATION PROMPT
+═══════════════════════════════════════════════════════ */
+
+@keyframes biometric-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Login button (replaces the form when biometric is registered) ─── */
+
+.biometric-login {
+  display: grid;
+  gap: 14px;
+}
+
+.biometric-login-button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  animation: biometric-rise 200ms ease both;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.biometric-login-button:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--line-2);
+}
+
+.biometric-login-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.biometric-login-icon {
+  color: var(--accent);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.biometric-login-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.biometric-login-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.biometric-login-email {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.biometric-switch-link {
+  display: block;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: center;
+  transition: color 140ms ease;
+}
+
+.biometric-switch-link:hover {
+  color: var(--text-dim);
+}
+
+/* ─── Registration toast (fixed bottom-right) ─── */
+
+.biometric-prompt {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  width: min(360px, calc(100vw - 48px));
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 14px;
+  row-gap: 12px;
+  align-items: start;
+  animation: biometric-rise 200ms ease both;
+}
+
+.biometric-prompt-icon {
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  padding-top: 1px;
+}
+
+.biometric-prompt-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.biometric-prompt-copy strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.biometric-prompt-copy p {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.biometric-prompt-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.biometric-status-text {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.biometric-status-text--ok  { color: var(--good); }
+.biometric-status-text--err { color: var(--bad); }
+
+@media (max-width: 600px) {
+  .biometric-prompt {
+    bottom: 80px; /* clear the mobile nav bar */
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
