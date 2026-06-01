@@ -2718,6 +2718,7 @@ label {
   margin-bottom: 6px;
 }
 
+input:not([type]),
 input[type="text"],
 input[type="email"],
 input[type="tel"],
@@ -2764,7 +2765,10 @@ textarea:focus {
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
+input:-webkit-autofill:active,
+input:not([type]):-webkit-autofill,
+input:not([type]):-webkit-autofill:hover,
+input:not([type]):-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px var(--input-bg) inset !important;
   -webkit-text-fill-color: var(--text) !important;
   caret-color: var(--text);
