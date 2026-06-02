@@ -15,7 +15,13 @@ export function MemberCard({ member, onOpen, onRegisterPayment, canRegisterPayme
   const showPlaceholder = !member.photoUrl || imageError;
 
   return (
-    <article className="member-card">
+    <article
+      className="member-card"
+      onClick={() => onOpen(member.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(member.id); }}
+    >
       <div className="member-card-top">
         {showPlaceholder ? (
           <div className="member-avatar-placeholder" aria-label={member.fullName}>
@@ -34,7 +40,7 @@ export function MemberCard({ member, onOpen, onRegisterPayment, canRegisterPayme
           <h3 className="member-card-name">{member.fullName}</h3>
           <p className="member-card-category">{member.categoryName}</p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        <div className="member-card-top-status">
           <StatusBadge status={member.accountStatus} />
           {(member.creditBalance ?? 0) > 0 ? (
             <span className="member-card-credit-chip">{member.creditBalanceLabel} a favor</span>
@@ -43,19 +49,19 @@ export function MemberCard({ member, onOpen, onRegisterPayment, canRegisterPayme
       </div>
 
       <div className="member-finance-grid">
-        <div className="member-finance-item">
+        <div className="member-finance-item member-finance-cuota">
           <span>Cuota</span>
           <strong>{member.monthlyFeeLabel}</strong>
         </div>
-        <div className="member-finance-item">
+        <div className="member-finance-item member-finance-lastpay">
           <span>Ultimo pago</span>
           <strong>{member.lastPaymentLabel}</strong>
         </div>
-        <div className="member-finance-item">
+        <div className="member-finance-item member-finance-vence">
           <span>Vence</span>
           <strong>{member.nextDueLabel}</strong>
         </div>
-        <div className="member-finance-item">
+        <div className="member-finance-item member-finance-deuda">
           <span>Deuda</span>
           <strong className={member.pendingDebt > 0 ? "debt-highlight" : ""}>
             {member.pendingDebtLabel}
@@ -80,15 +86,20 @@ export function MemberCard({ member, onOpen, onRegisterPayment, canRegisterPayme
       </div>
 
       <div className="member-card-actions">
-        <button className="secondary-button member-card-button" onClick={() => onOpen(member.id)}>
+        <button
+          className="secondary-button member-card-button"
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpen(member.id); }}
+        >
           Ver ficha
         </button>
         <button
-          className="primary-button member-card-button"
-          onClick={() => onRegisterPayment(member.id)}
+          className="primary-button member-card-button member-card-pay-btn"
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRegisterPayment(member.id); }}
           disabled={!canRegisterPayment}
         >
-          Registrar pago
+          Pagar
         </button>
       </div>
     </article>

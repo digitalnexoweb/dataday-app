@@ -3671,3 +3671,291 @@ textarea {
     flex-wrap: wrap;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   MEMBER CARD — desktop class replacing inline style
+═══════════════════════════════════════════════════════ */
+.member-card-top-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+/* ─── List view: vence column (mobile-only data field) ── */
+.member-list-col-vence {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE MEMBERS REDESIGN  (≤768 px)
+   Grid → 2-col compact cards
+   List → 3-zone rows (identity / data / debt+action)
+   All rules additive — zero desktop changes.
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ─── Toggle buttons: min 36 × 36 px ─────────────── */
+  .view-toggle-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* ─── GRID VIEW: 2 columns ───────────────────────── */
+  .member-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* ─── Grid card: compact, dark, tappable ─────────── */
+  .member-grid .member-card {
+    padding: 12px;
+    gap: 8px;
+    cursor: pointer;
+    background: var(--surface);
+    border-color: var(--line);
+  }
+
+  /* Card header: 40 px avatar + headline, badge below */
+  .member-grid .member-card-top {
+    grid-template-columns: 40px 1fr;
+    gap: 8px;
+    align-items: start;
+  }
+
+  /* Badge row spans full card width */
+  .member-grid .member-card-top-status {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  /* Avatar sizes */
+  .member-grid .member-avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    font-size: 0.7rem;
+  }
+
+  .member-grid .member-avatar {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  /* Name: single line, ellipsis */
+  .member-grid .member-card-name {
+    font-size: 0.88rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .member-grid .member-card-category {
+    font-size: 0.72rem;
+    margin-top: 2px;
+  }
+
+  /* Finance section: column layout, deuda + vence only */
+  .member-grid .member-finance-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 0;
+    border-bottom: none;
+  }
+
+  .member-grid .member-finance-item {
+    border-right: none;
+    padding: 0;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  /* Hide cuota and ultimo pago */
+  .member-grid .member-finance-cuota,
+  .member-grid .member-finance-lastpay {
+    display: none;
+  }
+
+  /* Deuda: large, semantic color, shown first via order */
+  .member-grid .member-finance-deuda {
+    order: 1;
+    gap: 2px;
+  }
+
+  .member-grid .member-finance-deuda > span {
+    font-size: 0.58rem;
+  }
+
+  .member-grid .member-finance-deuda > strong {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* Vence: inline label + value, dim */
+  .member-grid .member-finance-vence {
+    order: 2;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .member-grid .member-finance-vence > span {
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .member-grid .member-finance-vence > strong {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* Contact row: hidden on mobile grid */
+  .member-grid .member-card-contact {
+    display: none;
+  }
+
+  /* Actions: only Pagar, right-aligned, compact */
+  .member-grid .member-card-actions {
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  /* Hide Ver ficha in grid mode — card tap handles navigation */
+  .member-grid .secondary-button.member-card-button {
+    display: none;
+  }
+
+  .member-grid .member-card-pay-btn {
+    flex: unset;
+    padding: 8px 18px;
+    font-size: 0.8rem;
+    min-height: 44px;
+  }
+
+  /* ─── LIST VIEW: 3-zone rows ─────────────────────── */
+  /*
+   * Zones:
+   *   Left col (1fr):  identity (avatar + name + category)
+   *                    badge
+   *                    center (vence + cuota stacked)
+   *   Right col (110px): debt (spans identity+badge rows)
+   *                      pagar button
+   */
+  .member-list-row {
+    display: grid;
+    grid-template-columns: 1fr 110px;
+    grid-template-areas:
+      "identity debt"
+      "badge    debt"
+      "center   pay";
+    gap: 4px 10px;
+    padding: 12px 14px;
+    align-items: start;
+    margin-bottom: 8px;
+  }
+
+  .member-list-row > .member-list-row-identity {
+    grid-area: identity;
+    align-items: flex-start;
+  }
+
+  .member-list-row > .member-list-row-identity strong {
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  .member-list-row > .member-list-row-identity p {
+    white-space: normal;
+  }
+
+  /* Larger avatar for list rows */
+  .member-list-row .avatar,
+  .member-list-row .avatar-placeholder {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 0.88rem;
+  }
+
+  .member-list-row > .status-badge {
+    grid-area: badge;
+  }
+
+  /* Center zone: vence + cuota stacked */
+  .member-list-row > .member-list-row-center {
+    grid-area: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .member-list-col-vence {
+    display: block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+
+  .member-list-row .member-list-col-fee {
+    display: block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* Debt: right-aligned, large, spans identity+badge rows */
+  .member-list-row > .member-list-col-debt {
+    grid-area: debt;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 1.05rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: right;
+    align-self: center;
+    color: var(--text-dim);
+  }
+
+  .member-list-row > .member-list-col-lastpay {
+    display: none;
+  }
+
+  /* Pagar zone: bottom right */
+  .member-list-row > .member-list-row-actions {
+    grid-area: pay;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-self: end;
+    gap: 0;
+  }
+
+  /* Hide Ver ficha — identity tap handles navigation (desktop button kept) */
+  .member-list-row > .member-list-row-actions > .secondary-button {
+    display: none;
+  }
+
+  .member-list-row > .member-list-row-actions > .primary-button {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px;
+    font-size: 0.8rem;
+    flex: unset;
+  }
+}

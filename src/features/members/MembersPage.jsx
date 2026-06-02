@@ -174,7 +174,7 @@ export function MembersPage({
           <div className="member-list-header">
             <span>Socio</span>
             <span>Estado</span>
-            <span>Cuota</span>
+            <span>Cuota / Vence</span>
             <span>Deuda</span>
             <span>Ultimo pago</span>
             <span>Acciones</span>
@@ -189,7 +189,10 @@ export function MembersPage({
                 </div>
               </div>
               <StatusBadge status={member.accountStatus} />
-              <span className="member-list-row-mono member-list-col-fee">{member.monthlyFeeLabel}</span>
+              <div className="member-list-row-center">
+                <span className="member-list-row-mono member-list-col-vence">{member.nextDueLabel}</span>
+                <span className="member-list-row-mono member-list-col-fee">{member.monthlyFeeLabel}</span>
+              </div>
               <span className={`member-list-row-mono member-list-col-debt${member.pendingDebt > 0 ? " debt-highlight" : ""}`}>
                 {member.pendingDebtLabel}
               </span>
