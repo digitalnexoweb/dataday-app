@@ -7,3 +7,5 @@ dist/
 .netlify/
 .cloudflare/
 supabase/.temp/
+scripts/reel/_raw.mp4
+scripts/reel/_frames/
