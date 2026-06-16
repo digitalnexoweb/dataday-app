@@ -498,14 +498,27 @@ PHONE_REST_Y = (H - PHONE_H) // 2 + 40     # posicion de reposo vertical
 
 
 def build_phone_shell():
-    """Bezel del telefono (sin pantalla): se compone una sola vez."""
+    """
+    Bezel del telefono con un HUECO TRANSPARENTE donde va la pantalla.
+    El contenido de pantalla se pega ANTES que el shell; el hueco deja
+    ver ese contenido a traves del marco.
+    """
     shell = new_img(PHONE_W, PHONE_H)
     d = ImageDraw.Draw(shell)
-    # cuerpo
+    # cuerpo completo (incluye area de pantalla por ahora)
     rrect(d, [0, 0, PHONE_W, PHONE_H], 56, fill=(8, 9, 14, 255), outline=(40, 44, 58, 255), width=2)
-    # ranura interior (sombra)
-    rrect(d, [PAD - 4, PAD - 4, PHONE_W - PAD + 4, PHONE_H - PAD + 4], 40, outline=(0, 0, 0, 255), width=3)
-    return shell
+    # ranura interior (sombra de borde)
+    rrect(d, [PAD - 4, PAD - 4, PHONE_W - PAD + 4, PHONE_H - PAD + 4], 40, outline=(0, 0, 0, 200), width=3)
+    # Recortar el area de pantalla: poner alpha=0 donde va el viewport
+    # para que el contenido pegado antes pueda verse a traves del marco.
+    arr = np.array(shell)
+    cutout = Image.new("L", (PHONE_W, PHONE_H), 0)
+    ImageDraw.Draw(cutout).rounded_rectangle(
+        [PAD, PAD, PAD + SCREEN_W, PAD + VH], radius=38, fill=255
+    )
+    cutout_arr = np.array(cutout)
+    arr[cutout_arr > 128, 3] = 0
+    return Image.fromarray(arr)
 
 
 def compose_phone(inner, lift=0.0):
@@ -628,26 +641,23 @@ def render_frame(i):
     # ---------- ESCENA 1: INTRO ----------
     if i < S1:
         t = i / S1
-        frame = Image.new("RGB", (W, H), BG).convert("RGBA")
-        frame.alpha_composite(bg_glow)
-        # el telefono sube desde abajo en la 2da mitad
+        # telefono sube desde abajo en la segunda mitad de la escena
         rise = ease_out(clamp01((t - 0.35) / 0.65))
         lift = 1.0 - rise
         inner = viewport_of(SCR_DASH, 0, zoom=1.0, active_nav=0)
-        f2, _ = compose_phone(inner, lift=lift)
-        f2 = f2.convert("RGBA")
-        # wordmark central que sube y se desvanece
+        frame, _ = compose_phone(inner, lift=lift)   # RGB, ya incluye bg_glow
+        frame = frame.convert("RGBA")
+        # wordmark que aparece arriba y sube junto al telefono
         wm_a = ease_in_out(clamp01(t / 0.4)) * (1 - clamp01((t - 0.75) / 0.25))
         ov = new_img(W, H)
         d = ImageDraw.Draw(ov)
         wy = int(lerp(H * 0.42, H * 0.16, rise))
-        a = int(255 * wm_a)
         text_tracked(d, (W / 2, wy), "DATA DAY", sans_b(96), TEXT, tracking=6, anchor="ma")
         text_tracked(d, (W / 2, wy + 120), "GESTION DE CUOTAS PARA TU CLUB",
                      sans(30), ACCENT, tracking=3, anchor="ma")
         ov.putalpha(ov.split()[3].point(lambda p: int(p * wm_a)))
-        f2.alpha_composite(ov)
-        return f2.convert("RGB")
+        frame.alpha_composite(ov)
+        return frame.convert("RGB")
 
     # ---------- ESCENA 2: DASHBOARD ----------
     if i < S2:
