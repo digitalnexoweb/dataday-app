@@ -64,8 +64,7 @@ function buildPage(
     ? `<a class="back" href="${esc(options.appUrl)}">Volver a DATA DAY &rarr;</a>`
     : "";
 
-  return `
-    <!doctype html>
+  return `<!doctype html>
     <html lang="es">
       <head>
         <meta charset="utf-8" />
@@ -223,8 +222,18 @@ function buildPage(
           })();
         </script>
       </body>
-    </html>
-  `;
+    </html>`;
+}
+
+/**
+ * Devuelve la pagina HTML con los headers correctos.
+ * Usa `new Headers()` + Content-Type explicito para que el navegador la
+ * RENDERICE (y no la muestre como texto plano / con caracteres rotos).
+ */
+function htmlResponse(body: string, status = 200): Response {
+  const headers = new Headers(corsHeaders);
+  headers.set("Content-Type", "text/html; charset=utf-8");
+  return new Response(body, { status, headers });
 }
 
 Deno.serve(async (request) => {
@@ -240,19 +249,19 @@ Deno.serve(async (request) => {
     const approvalSecret = Deno.env.get("ADMIN_APPROVAL_SECRET") ?? "";
 
     if (!requestId || !action || !token || !approvalSecret) {
-      return new Response(buildPage("Acceso invalido", "El enlace no es valido o ya no esta disponible.", "danger"), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-      });
+      return htmlResponse(
+        buildPage("Acceso invalido", "El enlace no es valido o ya no esta disponible.", "danger"),
+        400,
+      );
     }
 
     const isValidToken = await verifyActionToken(approvalSecret, requestId, action, token);
 
     if (!isValidToken) {
-      return new Response(buildPage("Acceso invalido", "No pudimos validar este enlace de revision.", "danger"), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-      });
+      return htmlResponse(
+        buildPage("Acceso invalido", "No pudimos validar este enlace de revision.", "danger"),
+        403,
+      );
     }
 
     const result = await processAccessRequestReview({
@@ -269,22 +278,16 @@ Deno.serve(async (request) => {
       ? "El cliente ya puede iniciar sesion con la contrasena que eligio al solicitar el acceso."
       : "La solicitud fue rechazada. El cliente no tendra acceso a la app.";
 
-    return new Response(
+    return htmlResponse(
       buildPage(title, message, isApproved ? "success" : "neutral", {
         activationUrl: result.activationUrl,
         email: result.email,
         emailSent: result.emailSent,
         appUrl,
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-      },
     );
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return new Response(buildPage("Ocurrio un error", detail, "danger"), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-    });
+    return htmlResponse(buildPage("Ocurrio un error", detail, "danger"), 500);
   }
 });
