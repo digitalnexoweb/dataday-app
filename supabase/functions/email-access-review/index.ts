@@ -226,12 +226,15 @@ function buildPage(
 }
 
 /**
- * Devuelve la pagina HTML con los headers correctos.
- * Usa `new Headers()` + Content-Type explicito para que el navegador la
+ * Devuelve la pagina HTML con el header correcto para que el navegador la
  * RENDERICE (y no la muestre como texto plano / con caracteres rotos).
+ *
+ * Se usa una instancia `Headers` (no un objeto plano) y se setea SOLO el
+ * Content-Type: los headers CORS no aplican a una navegacion normal del
+ * navegador y podrian interferir con como se sirve la respuesta.
  */
 function htmlResponse(body: string, status = 200): Response {
-  const headers = new Headers(corsHeaders);
+  const headers = new Headers();
   headers.set("Content-Type", "text/html; charset=utf-8");
   return new Response(body, { status, headers });
 }
