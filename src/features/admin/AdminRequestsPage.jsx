@@ -9,6 +9,17 @@ const STATUS_LABELS = {
   rejected: "Rechazado",
 };
 
+const APP_URL = "https://dataday-app.pages.dev";
+
+/** Arma el link wa.me para avisarle al cliente que su solicitud fue aprobada. */
+function buildWhatsappUrl(request) {
+  const digits = String(request.phone || "").replace(/\D/g, "");
+  if (!digits) return null;
+  const club = request.club_name ? ` para ${request.club_name}` : "";
+  const message = `Hola ${request.full_name}! Tu solicitud de acceso a DataDay${club} fue aprobada. Ya podes ingresar a la app: ${APP_URL}`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}
+
 export function AdminRequestsPage({ authState }) {
   const [requests, setRequests] = useState([]);
   const [status, setStatus] = useState({ loading: true, message: "", error: "" });
@@ -189,6 +200,16 @@ export function AdminRequestsPage({ authState }) {
                 >
                   Copiar activacion
                 </button>
+                {request.status === "approved" && buildWhatsappUrl(request) ? (
+                  <a
+                    className="secondary-button member-card-button"
+                    href={buildWhatsappUrl(request)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Enviar WhatsApp
+                  </a>
+                ) : null}
               </div>
               {activationLinks[request.id] ? (
                 <div className="admin-request-link-block">

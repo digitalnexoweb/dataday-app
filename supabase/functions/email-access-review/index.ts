@@ -15,6 +15,17 @@ import { corsHeaders, processAccessRequestReview, verifyActionToken } from "../_
 
 const RULE = "====================================";
 const THIN = "------------------------------------";
+const APP_URL = Deno.env.get("APP_BASE_URL") ?? "https://dataday-app.pages.dev";
+
+/** Arma el link wa.me para avisarle al cliente por WhatsApp que fue aprobado. */
+function buildWhatsappUrl(phone?: string | null, fullName?: string, clubName?: string): string {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  const nombre = fullName || "";
+  const club = clubName ? ` para ${clubName}` : "";
+  const msg = `Hola ${nombre}! Tu solicitud de acceso a DataDay${club} fue aprobada. Ya podes ingresar a la app: ${APP_URL}`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`;
+}
 
 /** Arma el cuerpo de texto plano de la pagina de resultado. */
 function buildText(
@@ -24,6 +35,7 @@ function buildText(
     activationUrl?: string;
     email?: string;
     emailSent?: boolean;
+    whatsappUrl?: string;
   },
 ): string {
   const lines: string[] = [
@@ -35,6 +47,17 @@ function buildText(
     "",
     message,
   ];
+
+  if (options?.whatsappUrl) {
+    lines.push(
+      "",
+      THIN,
+      "",
+      "Avisale al cliente por WhatsApp (abri este link):",
+      "",
+      options.whatsappUrl,
+    );
+  }
 
   if (options?.activationUrl) {
     lines.push(
@@ -107,6 +130,7 @@ Deno.serve(async (request) => {
             activationUrl: result.activationUrl,
             email: result.email,
             emailSent: result.emailSent,
+            whatsappUrl: buildWhatsappUrl(result.phone, result.fullName, result.clubName),
           },
         ),
       );

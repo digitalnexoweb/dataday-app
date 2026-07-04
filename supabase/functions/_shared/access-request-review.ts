@@ -375,5 +375,14 @@ export async function processAccessRequestReview({
     console.error("No se pudo enviar el email de credenciales.", emailError);
   }
 
-  return { status: "approved", clubId: club.id, activationUrl, emailSent, email: accessRequest.email };
+  return {
+    status: "approved",
+    clubId: club.id,
+    activationUrl,
+    emailSent,
+    email: accessRequest.email,
+    phone: accessRequest.phone ?? null,
+    fullName: accessRequest.full_name ?? "",
+    clubName: accessRequest.club_name ?? "",
+  };
 }
