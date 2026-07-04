@@ -1,0 +1,67 @@
+name: Supabase keep-alive
+
+# ---------------------------------------------------------------------------
+# Mantiene "despierto" el proyecto Supabase del plan gratuito.
+#
+# Los proyectos Free de Supabase se PAUSAN automaticamente tras ~7 dias sin
+# actividad. Al pausarse, se desmontan los endpoints y el DNS deja de
+# resolver -> la app falla con "ERR_NAME_NOT_RESOLVED" / "Failed to send a
+# request to the Edge Function".
+#
+# Este workflow hace un request liviano al REST API cada 2 dias. Cualquier
+# consulta cuenta como actividad y reinicia el contador de inactividad.
+#
+# REQUISITOS (una sola vez):
+#   1. En GitHub: Settings > Secrets and variables > Actions > New secret
+#        Nombre : SUPABASE_ANON_KEY
+#        Valor  : la "anon public" key (Supabase Dashboard > Project Settings
+#                 > API > Project API keys > anon public)
+#   2. Este archivo debe estar en la rama por defecto (main) para que el
+#      cron se active. GitHub NO ejecuta schedules desde otras ramas.
+# ---------------------------------------------------------------------------
+
+on:
+  schedule:
+    # Cada 2 dias a las 06:17 UTC (margen amplio dentro de la ventana de 7 dias)
+    - cron: "17 6 */2 * *"
+  # Permite dispararlo a mano desde la pestana Actions
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: https://gyiivrjjecymkpvkqpfy.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::Falta el secret SUPABASE_ANON_KEY. Agregalo en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+          echo "Ping a $SUPABASE_URL ..."
+          # Consulta minima que toca PostgREST -> genera actividad real de DB.
+          # (Si RLS bloquea la tabla igual cuenta como actividad: el request
+          #  llega al motor y despierta al proyecto.)
+          code=$(curl -s -o /tmp/resp.txt -w "%{http_code}" \
+            --retry 4 --retry-delay 5 --max-time 30 \
+            "$SUPABASE_URL/rest/v1/clubs?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY") || true
+
+          echo "Respuesta HTTP: $code"
+          echo "Cuerpo:"
+          cat /tmp/resp.txt 2>/dev/null || true
+          echo ""
+
+          # 2xx = ok ; 401/403 = RLS pero hubo actividad ; 000/5xx = fallo real
+          if [ "$code" = "000" ] || [ "${code:0:1}" = "5" ]; then
+            echo "::error::El proyecto no respondio correctamente (HTTP $code). Puede estar pausado; restauralo desde el dashboard."
+            exit 1
+          fi
+
+          echo "Keep-alive OK (HTTP $code) — proyecto activo."
