@@ -171,7 +171,8 @@ body.light {
   --card-bg-soft: var(--surface);
   --card-bg-strong: var(--surface-2);
   --card-border: var(--line);
-  --input-bg: var(--bg-elev);
+  --input-bg: var(--surface);
+  --input-border: rgba(15, 23, 42, 0.22);
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
   --chip-bg: var(--surface-2);
