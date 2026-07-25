@@ -23,6 +23,7 @@ export function SettingsPage({
   onUpdateCategory,
   onDeleteCategory,
   canManageClubScopedData,
+  onLogout,
 }) {
   const [form, setForm] = useState(appSettings);
   const [saved, setSaved] = useState(false);
@@ -374,6 +375,14 @@ export function SettingsPage({
           </div>
         )}
       </SectionCard>
+
+      {onLogout ? (
+        <SectionCard title="Sesion" subtitle="Cerra tu sesion en este dispositivo.">
+          <button className="secondary-button" type="button" onClick={onLogout}>
+            Cerrar sesion
+          </button>
+        </SectionCard>
+      ) : null}
     </div>
   );
 }

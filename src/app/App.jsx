@@ -369,6 +369,7 @@ export default function App() {
     onDeleteCategory: handleDeleteCategory,
     appSettings,
     onUpdateSettings: handleUpdateSettings,
+    onLogout: handleLogout,
     authState,
     selectedMember,
     availableClubs,
