@@ -51,22 +51,28 @@ export function Header({
       <div className="topbar-actions">
         {onToggleTheme ? (
           <button
-            className="theme-toggle"
+            className={`theme-toggle ${theme === "dark" ? "is-dark" : "is-light"}`}
             type="button"
+            role="switch"
+            aria-checked={theme === "dark"}
             onClick={onToggleTheme}
             title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
             aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
           >
-            {theme === "dark" ? (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <circle cx="8" cy="8" r="3.5" />
-                <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 100 11 6 6 0 007-4z" />
-              </svg>
-            )}
+            <span className="theme-toggle-icon" aria-hidden="true">
+              {theme === "dark" ? (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 100 11 6 6 0 007-4z" />
+                  <path d="M11.2 2.2l.4 1.1 1.1.4-1.1.4-.4 1.1-.4-1.1-1.1-.4 1.1-.4z" fill="currentColor" stroke="none" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <circle cx="8" cy="8" r="3.3" />
+                  <path d="M8 1.2v1.4M8 13.4V14.8M1.2 8h1.4M13.4 8H14.8M3.1 3.1l1 1M11.9 11.9l1 1M3.1 12.9l1-1M11.9 4.1l1-1" />
+                </svg>
+              )}
+            </span>
+            <span className="theme-toggle-knob" aria-hidden="true" />
           </button>
         ) : null}
         {authState?.profile ? (
