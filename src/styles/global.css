@@ -3459,6 +3459,11 @@ textarea {
   }
 }
 
+/* Payments history: compact list is mobile-only (R4) */
+.payments-mobile-list {
+  display: none;
+}
+
 /* ═══════════════════════════════════════════════════════
    MOBILE POLISH  (≤768 px)
    All rules here are additive — zero desktop changes.
@@ -3543,13 +3548,16 @@ textarea {
     align-self: flex-end;
   }
 
-  /* ─── Stat cards: 1 column on very small screens ── */
-  .stats-grid,
-  .stats-grid-3 {
+  /* ─── Stat cards: featured full-width + 2×2 grid (R3) ── */
+  .stats-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .stats-grid-3 {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
   .stat-card.is-featured.is-wide {
-    grid-column: span 1;
+    grid-column: span 2;
   }
 
   /* ─── Member list → card layout ─────────────────── */
@@ -3647,10 +3655,85 @@ textarea {
     padding: 24px 0;
   }
 
-  /* ─── Mobile nav: shrink items for 6th logout slot ─ */
+  /* ─── Payments history: dense 2-line rows (R4) ─────── */
+  .payments-desktop-table {
+    display: none;
+  }
+  .payments-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .payment-row-compact {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .payment-row-line1,
+  .payment-row-line2 {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .payment-row-line1 {
+    align-items: baseline;
+  }
+  .payment-row-line2 {
+    align-items: center;
+  }
+  .payment-row-name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.9rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .payment-row-amount {
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.95rem;
+    flex: 0 0 auto;
+  }
+  .payment-row-when {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .payment-row-method {
+    flex: 0 0 auto;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+    background: var(--surface-2);
+    border-radius: var(--radius-xs);
+    padding: 2px 8px;
+  }
+  .payments-mobile-empty {
+    list-style: none;
+    text-align: center;
+    color: var(--text-dim);
+    padding: 24px 0;
+  }
+
+  /* ─── Mobile nav: 5 items at legible size (R2) ────── */
   .mobile-nav-item {
-    padding: 8px 4px;
-    font-size: 0.58rem;
+    padding: 8px 6px;
+    font-size: 0.64rem;
     min-width: 44px;
     min-height: 44px;
   }
@@ -3665,11 +3748,44 @@ textarea {
 
   /* ─── Settings grid already 1-col at 900px — ok ─── */
 
-  /* ─── No horizontal bleed anywhere ──────────────── */
+  /* ─── Slim topbar: title + identity/theme only (R1) ─ */
+  /* Tighter vertical rhythm so content sits higher (R6) */
+  .topbar {
+    padding-top: 14px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    gap: 8px;
+  }
+  /* Drop the repeated eyebrow + generic per-page subtitle */
+  .topbar .eyebrow,
+  .topbar .topbar-subtitle {
+    display: none;
+  }
   .topbar-actions {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* Drop duplicated CTAs — reachable via per-page actions,
+     dashboard quick-action tiles and the mobile nav (R1/R5) */
+  .topbar-actions .primary-button,
+  .topbar-actions .secondary-button {
+    display: none;
+  }
+  /* Club-switcher stays visible but compact: identity chip for a
+     normal user, still the switcher for superadmin (R1 decision) */
+  .club-switcher.is-interactive {
+    min-width: 0;
+  }
+  .club-switcher-label {
+    display: none;
+  }
+  .club-switcher-badge {
+    padding: 6px 10px 6px 6px;
+  }
+  .club-switcher.is-interactive .club-switcher-badge {
+    padding-right: 30px;
   }
 }
 

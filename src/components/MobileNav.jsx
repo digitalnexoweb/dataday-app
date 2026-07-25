@@ -1,5 +1,3 @@
-import { authApi } from "../lib/authApi";
-
 const MOBILE_NAV_ITEMS = [
   { id: "dashboard",        label: "Inicio" },
   { id: "members",          label: "Socios" },
@@ -60,16 +58,6 @@ function getIcon(itemId) {
   );
 }
 
-function LogoutIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 4.5H5.5A1.5 1.5 0 0 0 4 6v12a1.5 1.5 0 0 0 1.5 1.5H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M13 8.5 17.5 12 13 15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M17.5 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export function MobileNav({ currentSection, onNavigate, isSuperAdmin }) {
   const navItems = isSuperAdmin
     ? [...MOBILE_NAV_ITEMS.slice(0, 4), { id: "admin-requests", label: "Solicitudes" }]
@@ -88,16 +76,6 @@ export function MobileNav({ currentSection, onNavigate, isSuperAdmin }) {
           <span>{item.label}</span>
         </button>
       ))}
-
-      <button
-        type="button"
-        className="mobile-nav-item"
-        onClick={() => authApi.signOut()}
-        aria-label="Cerrar sesion"
-      >
-        <span className="mobile-nav-icon"><LogoutIcon /></span>
-        <span>Salir</span>
-      </button>
     </nav>
   );
 }

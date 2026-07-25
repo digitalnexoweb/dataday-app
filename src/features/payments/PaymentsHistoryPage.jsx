@@ -165,18 +165,43 @@ export function PaymentsHistoryPage({ appData, appSettings, view }) {
         </div>
       ) : null}
 
-      <DataTable
-        columns={[
-          { key: "memberName", label: "Socio" },
-          { key: "month", label: "Mes", render: (row) => MONTH_NAMES[row.month - 1] },
-          { key: "year", label: "Ano" },
-          { key: "amount", label: "Monto", render: (row) => formatCurrency(row.amount) },
-          { key: "paymentMethod", label: "Forma de pago" },
-          { key: "paymentDate", label: "Fecha", render: (row) => formatDate(row.paymentDate) },
-        ]}
-        rows={paginatedRows}
-        emptyMessage="No hay pagos que coincidan con los filtros aplicados."
-      />
+      <div className="payments-desktop-table">
+        <DataTable
+          columns={[
+            { key: "memberName", label: "Socio" },
+            { key: "month", label: "Mes", render: (row) => MONTH_NAMES[row.month - 1] },
+            { key: "year", label: "Ano" },
+            { key: "amount", label: "Monto", render: (row) => formatCurrency(row.amount) },
+            { key: "paymentMethod", label: "Forma de pago" },
+            { key: "paymentDate", label: "Fecha", render: (row) => formatDate(row.paymentDate) },
+          ]}
+          rows={paginatedRows}
+          emptyMessage="No hay pagos que coincidan con los filtros aplicados."
+        />
+      </div>
+
+      <ul className="payments-mobile-list">
+        {paginatedRows.length === 0 ? (
+          <li className="payments-mobile-empty">
+            No hay pagos que coincidan con los filtros aplicados.
+          </li>
+        ) : (
+          paginatedRows.map((payment, index) => (
+            <li key={payment.id ?? index} className="payment-row-compact">
+              <div className="payment-row-line1">
+                <span className="payment-row-name">{payment.memberName}</span>
+                <span className="payment-row-amount">{formatCurrency(payment.amount)}</span>
+              </div>
+              <div className="payment-row-line2">
+                <span className="payment-row-when">
+                  {MONTH_NAMES[payment.month - 1]} {payment.year} &middot; {formatDate(payment.paymentDate)}
+                </span>
+                <span className="payment-row-method">{payment.paymentMethod}</span>
+              </div>
+            </li>
+          ))
+        )}
+      </ul>
     </SectionCard>
   );
 }
