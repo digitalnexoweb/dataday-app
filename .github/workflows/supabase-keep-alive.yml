@@ -1,67 +1,181 @@
 name: Supabase keep-alive
 
 # ---------------------------------------------------------------------------
-# Mantiene "despierto" el proyecto Supabase del plan gratuito.
+# Mantiene operativo el proyecto Supabase del plan gratuito.
 #
-# Los proyectos Free de Supabase se PAUSAN automaticamente tras ~7 dias sin
-# actividad. Al pausarse, se desmontan los endpoints y el DNS deja de
-# resolver -> la app falla con "ERR_NAME_NOT_RESOLVED" / "Failed to send a
-# request to the Edge Function".
+# Los proyectos Free se PAUSAN tras ~7 dias sin actividad. Al pausarse, los
+# endpoints se desmontan y la app falla con "ERR_NAME_NOT_RESOLVED" /
+# "Failed to send a request to the Edge Function".
 #
-# Este workflow hace un request liviano al REST API cada 2 dias. Cualquier
-# consulta cuenta como actividad y reinicia el contador de inactividad.
+# Este workflow hace TRES cosas (en este orden):
 #
-# REQUISITOS (una sola vez):
-#   1. En GitHub: Settings > Secrets and variables > Actions > New secret
-#        Nombre : SUPABASE_ANON_KEY
-#        Valor  : la "anon public" key (Supabase Dashboard > Project Settings
-#                 > API > Project API keys > anon public)
-#   2. Este archivo debe estar en la rama por defecto (main) para que el
-#      cron se active. GitHub NO ejecuta schedules desde otras ramas.
+#   1. AUTO-RESTORE — consulta el estado real via Management API. Si el
+#      proyecto esta pausado (INACTIVE), llama al endpoint de restore y
+#      espera hasta que vuelva a ACTIVE_HEALTHY. Un simple ping NO puede
+#      despausar un proyecto: solo previene la pausa mientras esta activo.
+#
+#   2. PING — request liviano al REST API. Cualquier consulta cuenta como
+#      actividad y reinicia el contador de inactividad de 7 dias.
+#
+#   3. HEARTBEAT — GitHub DESACTIVA los cron schedules en repos sin actividad
+#      durante 60 dias (fue lo que paso: las corridas se cortaron solas y el
+#      proyecto termino pausandose). Si el ultimo commit es viejo, escribe un
+#      archivo de latido y lo commitea para mantener el repo "activo".
+#
+# REQUISITOS (secrets en Settings > Secrets and variables > Actions):
+#   SUPABASE_ANON_KEY     -> Project Settings > API > anon public  (para el ping)
+#   SUPABASE_ACCESS_TOKEN -> https://supabase.com/dashboard/account/tokens
+#                            (para leer el estado y auto-restaurar)
 # ---------------------------------------------------------------------------
 
 on:
   schedule:
-    # Cada 2 dias a las 06:17 UTC (margen amplio dentro de la ventana de 7 dias)
-    - cron: "17 6 */2 * *"
-  # Permite dispararlo a mano desde la pestana Actions
+    # Diario a las 06:17 UTC — margen amplio dentro de la ventana de 7 dias.
+    - cron: "17 6 * * *"
   workflow_dispatch:
 
+# Necesario para el commit de heartbeat del paso 3.
+permissions:
+  contents: write
+
 jobs:
-  ping:
+  keep-alive:
     runs-on: ubuntu-latest
+    env:
+      PROJECT_REF: gyiivrjjecymkpvkqpfy
+      SUPABASE_URL: https://gyiivrjjecymkpvkqpfy.supabase.co
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      API: https://api.supabase.com/v1/projects
+
     steps:
-      - name: Ping Supabase REST API
-        env:
-          SUPABASE_URL: https://gyiivrjjecymkpvkqpfy.supabase.co
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      - uses: actions/checkout@v4
+
+      # --- 1. Estado + auto-restore -------------------------------------
+      - name: Verificar estado y restaurar si esta pausado
         run: |
-          set -euo pipefail
+          set -uo pipefail
+
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::warning::Falta el secret SUPABASE_ACCESS_TOKEN. Sin el no puedo"
+            echo "::warning::leer el estado ni auto-restaurar; sigo solo con el ping."
+            exit 0
+          fi
+
+          get_status() {
+            curl -s --max-time 30 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              "$API/$PROJECT_REF" | jq -r '.status // "UNKNOWN"'
+          }
+
+          status=$(get_status)
+          echo "Estado del proyecto: $status"
+
+          if [ "$status" != "INACTIVE" ] && [ "$status" != "PAUSED" ]; then
+            echo "Proyecto operativo — no hace falta restaurar."
+            echo "estado=$status" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "::warning::El proyecto estaba PAUSADO ($status). Restaurando..."
+
+          code=$(curl -s -o /tmp/restore.json -w "%{http_code}" --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "$API/$PROJECT_REF/restore")
+
+          echo "Respuesta del restore: HTTP $code"
+          cat /tmp/restore.json 2>/dev/null || true
+          echo ""
+
+          if [ "${code:0:1}" != "2" ]; then
+            echo "::error::No se pudo iniciar la restauracion (HTTP $code)."
+            echo "::error::Revisa que SUPABASE_ACCESS_TOKEN siga siendo valido."
+            exit 1
+          fi
+
+          # Restaurar desde pausa pasa por INACTIVE -> COMING_UP -> RESTORING
+          # -> ACTIVE_HEALTHY. Suele tardar varios minutos.
+          echo "Esperando a que el proyecto vuelva a estar activo..."
+          for i in $(seq 1 40); do
+            sleep 15
+            st=$(get_status)
+            echo "  [$i/40] $st"
+            if [ "$st" = "ACTIVE_HEALTHY" ]; then
+              echo "Proyecto restaurado correctamente."
+              echo "estado=RESTAURADO" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+
+          echo "::warning::La restauracion sigue en curso tras 10 minutos."
+          echo "::warning::Suele completarse sola; el ping de abajo puede fallar."
+          echo "estado=RESTAURANDO" >> "$GITHUB_ENV"
+
+      # --- 2. Ping (genera actividad real y reinicia el contador) --------
+      - name: Ping al REST API
+        run: |
+          set -uo pipefail
 
           if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
-            echo "::error::Falta el secret SUPABASE_ANON_KEY. Agregalo en Settings > Secrets and variables > Actions."
+            echo "::error::Falta el secret SUPABASE_ANON_KEY."
             exit 1
           fi
 
           echo "Ping a $SUPABASE_URL ..."
-          # Consulta minima que toca PostgREST -> genera actividad real de DB.
-          # (Si RLS bloquea la tabla igual cuenta como actividad: el request
-          #  llega al motor y despierta al proyecto.)
           code=$(curl -s -o /tmp/resp.txt -w "%{http_code}" \
-            --retry 4 --retry-delay 5 --max-time 30 \
+            --retry 4 --retry-delay 10 --max-time 30 \
             "$SUPABASE_URL/rest/v1/clubs?select=id&limit=1" \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY") || true
 
           echo "Respuesta HTTP: $code"
-          echo "Cuerpo:"
           cat /tmp/resp.txt 2>/dev/null || true
           echo ""
 
-          # 2xx = ok ; 401/403 = RLS pero hubo actividad ; 000/5xx = fallo real
+          # 2xx = ok ; 401/403 = RLS bloqueo la tabla pero hubo actividad real
+          # 000/5xx = el proyecto no respondio
           if [ "$code" = "000" ] || [ "${code:0:1}" = "5" ]; then
-            echo "::error::El proyecto no respondio correctamente (HTTP $code). Puede estar pausado; restauralo desde el dashboard."
+            echo "::error::El proyecto no respondio (HTTP $code)."
             exit 1
           fi
 
           echo "Keep-alive OK (HTTP $code) — proyecto activo."
+
+      # --- 3. Heartbeat: evita que GitHub desactive el cron --------------
+      - name: Heartbeat del repositorio
+        run: |
+          set -uo pipefail
+
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          dias=$(( (now - last) / 86400 ))
+          echo "Ultimo commit del repo: hace $dias dia(s)."
+
+          # GitHub desactiva los schedules a los 60 dias sin actividad.
+          # Commiteamos bastante antes para no acercarnos nunca a ese limite.
+          if [ "$dias" -lt 30 ]; then
+            echo "Repo con actividad reciente — no hace falta latido."
+            exit 0
+          fi
+
+          echo "Escribiendo latido para mantener activo el cron..."
+          mkdir -p .github
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive-heartbeat.txt
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive-heartbeat.txt
+          git commit -m "chore: latido de keep-alive (evita que GitHub desactive el cron)"
+          git push
+
+      # --- Resumen visible en la pestana Actions ------------------------
+      - name: Resumen
+        if: always()
+        run: |
+          echo "### Supabase keep-alive" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Proyecto: \`$PROJECT_REF\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Estado detectado: \`${estado:-desconocido}\`" >> "$GITHUB_STEP_SUMMARY"
