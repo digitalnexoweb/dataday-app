@@ -808,6 +808,34 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow);
 }
 
+/* ─── Fondo de particulas (solo en la pantalla de login) ─────────────
+   `.auth-shell` la comparten 7 pantallas mas (carga de sesion, acceso
+   pendiente, reset de contrasena, error de club...). El modificador
+   mantiene el fondo animado unicamente donde lo queremos. */
+.auth-shell-particles {
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* La tarjeta va por encima y opaca: el formulario se lee sin competencia. */
+.auth-shell-particles .auth-card {
+  position: relative;
+  z-index: 1;
+}
+
+/* Contenedor del canvas (venia en el Particles.css del componente). */
+.particles-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .auth-hero {
   display: flex;
   align-items: flex-start;
