@@ -1,15 +1,48 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { AccessRequestForm } from "./AccessRequestForm";
 import { LoginForm } from "./LoginForm";
 import { SetPasswordForm } from "./SetPasswordForm";
 import { authApi } from "../../lib/authApi";
 
-export function AuthPage({ authError }) {
+// Carga diferida: `ogl` (~50 KB) queda en su propio chunk, asi el formulario
+// de login se pinta al instante y las particulas entran despues.
+const Particles = lazy(() => import("../../components/Particles"));
+
+const matches = (query) =>
+  typeof window !== "undefined" && Boolean(window.matchMedia?.(query).matches);
+
+// Se evaluan una sola vez por carga de pagina.
+const prefersReducedMotion = matches("(prefers-reduced-motion: reduce)");
+const isSmallScreen = matches("(max-width: 768px)");
+
+export function AuthPage({ authError, theme }) {
   const [mode, setMode] = useState("login");
   const isPasswordRecovery = authApi.isPasswordRecoveryFlow();
 
+  // El violeta elegido se ve muy bien sobre el fondo claro, pero se apaga
+  // sobre el oscuro: ahi se usa el mismo tono, un paso mas luminoso.
+  const particleColor = theme === "light" ? "#6423d1" : "#8B5CF6";
+
   return (
-    <div className="auth-shell">
+    <div className="auth-shell auth-shell-particles">
+      {!prefersReducedMotion ? (
+        <div className="auth-particles" aria-hidden="true">
+          <Suspense fallback={null}>
+            <Particles
+              particleColors={[particleColor]}
+              particleCount={isSmallScreen ? 120 : 200}
+              particleSpread={10}
+              speed={0.1}
+              particleBaseSize={200}
+              moveParticlesOnHover
+              alphaParticles={false}
+              disableRotation={false}
+              pixelRatio={isSmallScreen ? 1 : 2}
+            />
+          </Suspense>
+        </div>
+      ) : null}
+
       <div className="auth-card">
         <div className="auth-hero">
           <div className="auth-hero-copy">

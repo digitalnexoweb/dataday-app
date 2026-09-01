@@ -403,7 +403,7 @@ export default function App() {
   }
 
   if (supabaseEnabled && !authState.session) {
-    return <AuthPage authError={authState.error} />;
+    return <AuthPage authError={authState.error} theme={theme} />;
   }
 
   if (supabaseEnabled && authState.session && !authState.profile) {
