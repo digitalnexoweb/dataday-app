@@ -125,3 +125,42 @@ code-splitting de jsPDF y vendor en `vite.config.js`.
 - `docs/architecture/diagramas-c4.md` — diagramas C4 (Mermaid).
 - `docs/architecture/adr/` — ADRs técnicos · `docs/plans/adr-personal.md` — plan de carrera 90 días.
 - `docs/temas-curso.md` — mapa de los temas del curso aplicados al proyecto.
+## Cómo colaborar con esta IA (Guía automática)
+
+Cuando le pedís algo a Claude Code, él automáticamente debería considerar estos artefactos:
+
+### Skills
+- **`supabase-migracion-club`**: Cuando pidas agregar una tabla nueva, crear una migración de Supabase, o necesites una tabla multi-club con RLS.
+  - *Trigger automático:* "Agregá tabla X", "Nueva migración", "Tabla de Y multi-club"
+
+### Agents (Subagentes)
+- **`auditor-seguridad`**: Cuando pidas revisar que los datos estén aislados por club, auditar RLS, o verificar que ningún club vea datos de otro.
+  - *Trigger automático:* "Revisá que X sea seguro", "Auditá aislamiento", "¿Hay un agujero de seguridad acá?"
+  
+- **`revisor-codigo`**: Cuando pidas revisar código antes de commitearlo, o verificar que siga convenciones (dataApi.js, club_id, dinero en RPC).
+  - *Trigger automático:* "Revisá este código", "¿Respeta convenciones?", "Antes de pushear, ¿está bien?"
+
+### MCP (Model Context Protocol)
+- **Supabase MCP** (`.mcp.json`): Cuando pidas ver el schema actual, listar tablas, revisar migraciones, o consultar logs.
+  - *Trigger automático:* "¿Qué tablas tengo?", "Mostrá el schema de X", "Revisá los logs"
+  - **Requisito:** Variable de entorno `SUPABASE_ACCESS_TOKEN` debe estar en `.env`
+
+### Prompts (Templates)
+- **`docs/prompts/`**: Son 5 plantillas reutilizables para tareas que repetiré.
+  - Consultalas si necesitás crear una feature, una migración, auditar, o una edge function — no improvises.
+
+### Documentación
+- **`docs/architecture/diagramas-c4.md`**: Cuando preguntes cómo se conecta algo o quieras entender la arquitectura.
+- **`docs/plans/spec-sdd.md`**: Para verificar que lo que programás cumple con el spec.
+- **`docs/plans/adr-personal.md`**: Mi plan a 90 días — para contexto de carrera.
+- **`docs/architecture/adr/*.md`**: Decisiones técnicas — consultá antes de cambiar cosas fundamentales.
+
+---
+
+## Convenciones que Claude respeta automáticamente
+
+1. **Datos:** Todo acceso pasa por `src/lib/dataApi.js` — nunca queries directas a Supabase desde componentes.
+2. **Club_id:** Toda query, mutation, RPC filtra por `club_id` (desde dataApi o RLS).
+3. **Dinero:** La lógica de pagos (parciales, adelantos, saldo a favor) vive en el RPC `registrar_pago_con_credito`, nunca en JavaScript.
+4. **Nombres:** camelCase en JS/React, snake_case en SQL/Postgres.
+5. **Seguridad:** RLS + `current_club_id()` o `is_superadmin()` — no confíes en el frontend.
