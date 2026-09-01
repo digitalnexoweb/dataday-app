@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import StarfieldButton from "./StarfieldButton";
 
 const TITLES = {
   dashboard: "Dashboard general",
@@ -123,12 +124,35 @@ export function Header({
         ) : null}
         {showOperationalActions ? (
           <>
-            <button
-              className="secondary-button"
-              onClick={() => onNavigate({ section: "member-form", memberId: null })}
-            >
-              Nuevo socio
-            </button>
+            <div className="starfield-action">
+              <StarfieldButton
+                label="Nuevo socio"
+                onClick={() => onNavigate({ section: "member-form", memberId: null })}
+                /* Tamano y tipografia igualados a `.secondary-button` para no
+                   alterar la altura del topbar. */
+                padding="9px 18px"
+                rounded={32}
+                font={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  lineHeight: 1.2,
+                  fontFamily: "inherit",
+                }}
+                /* Efectos reescalados: los valores de fabrica estan pensados
+                   para un boton de 570x128, no para uno de barra. */
+                stroke={{
+                  size: 48,
+                  color: "#FC731C",
+                  count: 1,
+                  speed: 50,
+                  movement: "continuous",
+                  direction: "ccw",
+                  thickness: 2,
+                }}
+                glow={{ size: 10, color: "#FC731C", opacity: 100 }}
+                pixel={{ size: 3, color: "#FC731C", density: 50, brightness: 100 }}
+              />
+            </div>
             <button
               className="primary-button"
               onClick={() =>

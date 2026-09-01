@@ -3812,7 +3812,8 @@ textarea {
   /* Drop duplicated CTAs — reachable via per-page actions,
      dashboard quick-action tiles and the mobile nav (R1/R5) */
   .topbar-actions .primary-button,
-  .topbar-actions .secondary-button {
+  .topbar-actions .secondary-button,
+  .topbar-actions .starfield-action {
     display: none;
   }
   /* Club-switcher stays visible but compact: identity chip for a
